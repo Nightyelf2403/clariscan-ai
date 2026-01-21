@@ -166,6 +166,7 @@ Frontend runs at:
 
 ClariScan AI provides informational insights only.
 It does not provide legal advice and should not be used as a substitute for a qualified legal professional.
+Currently focuses on high-confidence risk patterns. Some contextual or implicit risks (such as IP ownership balance or missing clauses) are intentionally conservative and flagged in future iterations.
 
 ⸻
 
@@ -184,3 +185,4 @@ It does not provide legal advice and should not be used as a substitute for a qu
 Lalith Aditya
 	•	GitHub: https://github.com/nightyelf2403
 	•	LinkedIn: https://www.linkedin.com/in/lalithaditya/
+
