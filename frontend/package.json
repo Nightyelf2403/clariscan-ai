@@ -1,0 +1,9 @@
+{
+  "homepage": "https://nightyelf2403.github.io/clariscan-ai",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d dist"
+  }
+}

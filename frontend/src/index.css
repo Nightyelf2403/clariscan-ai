@@ -1,0 +1,147 @@
+/* =========================
+   Global Reset & Base
+========================= */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+  background-color: #f3f4f6;
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: #111827;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* =========================
+   Animations
+========================= */
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* =========================
+   Glass Card
+========================= */
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  box-shadow:
+    0 20px 40px rgba(0, 0, 0, 0.12),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+  animation: fadeInUp 0.6s ease-out;
+}
+
+/* =========================
+   Glow Border Wrapper
+========================= */
+
+.glow-border {
+  position: relative;
+  border-radius: 18px;
+}
+
+.glow-border::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 20px;
+  background: linear-gradient(
+    120deg,
+    rgba(37, 99, 235, 0.35),
+    rgba(99, 102, 241, 0.35),
+    rgba(37, 99, 235, 0.35)
+  );
+  z-index: -1;
+  filter: blur(14px);
+}
+
+/* =========================
+   Buttons
+========================= */
+
+.analyze-btn {
+  transition: all 0.25s ease;
+}
+
+.analyze-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.35);
+}
+
+.analyze-btn:active {
+  transform: translateY(0);
+}
+
+/* =========================
+   Inputs
+========================= */
+
+input[type="file"] {
+  padding: 6px;
+  border-radius: 6px;
+  font-size: 14px;
+  border: 1px solid #d1d5db;
+  background: white;
+}
+
+/* =========================
+   Result Cards
+========================= */
+
+.result-card {
+  animation: fadeInUp 0.45s ease-out;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.result-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.12);
+}
+
+/* =========================
+   Typography Helpers
+========================= */
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  font-weight: 700;
+}
+
+p {
+  line-height: 1.55;
+}
+
+/* =========================
+   Footer Disclaimer
+========================= */
+
+.disclaimer {
+  font-size: 12px;
+  color: #6b7280;
+  margin-top: 24px;
+}
