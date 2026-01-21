@@ -1,29 +1,9 @@
 {
-  "name": "clariscan-frontend",
-  "private": true,
-  "version": "0.1.0",
-  "type": "module",
-  "homepage": "https://nightyelf2403.github.io/clariscan-ai/",
+  "homepage": "https://nightyelf2403.github.io/clariscan-ai",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist"
-  },
-  "dependencies": {
-    "axios": "^1.6.8",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0"
-  },
-  "devDependencies": {
-    "@tailwindcss/postcss": "^4.1.18",
-    "@types/react": "^18.2.66",
-    "@types/react-dom": "^18.2.22",
-    "@vitejs/plugin-react": "^4.2.1",
-    "autoprefixer": "^10.4.23",
-    "gh-pages": "^6.1.1",
-    "typescript": "^5.3.3",
-    "vite": "^5.1.4"
   }
 }

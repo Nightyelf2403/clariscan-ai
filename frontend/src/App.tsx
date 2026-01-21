@@ -11,38 +11,34 @@ type AnalysisResult = {
   };
 };
 
-const API_URL = "https://clariscan-ai.onrender.com/analyze";
-
 export default function App() {
   const [file, setFile] = useState<File | null>(null);
   const [results, setResults] = useState<AnalysisResult[]>([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const handleAnalyze = async () => {
     if (!file) {
-      setError("Please select a PDF file.");
+      alert("Please upload a PDF contract.");
       return;
     }
-
-    setError(null);
-    setResults([]);
-    setLoading(true);
 
     const formData = new FormData();
     formData.append("file", file);
 
-    try {
-      const response = await axios.post(API_URL, formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
+    setLoading(true);
+    setResults([]);
 
-      setResults(response.data.results || []);
-    } catch (err) {
-      console.error(err);
-      setError("Failed to analyze contract. Please try again.");
+    try {
+      const res = await axios.post(
+        "https://clariscan-ai.onrender.com/analyze",
+        formData,
+        { headers: { "Content-Type": "multipart/form-data" } }
+      );
+
+      setResults(res.data.results);
+    } catch (error) {
+      console.error(error);
+      alert("Failed to analyze contract");
     } finally {
       setLoading(false);
     }
@@ -58,117 +54,114 @@ export default function App() {
     <div
       style={{
         minHeight: "100vh",
-        backgroundColor: "#f3f4f6",
+        background:
+          "radial-gradient(circle at top, #eef2ff 0%, #f3f4f6 55%)",
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-        padding: "24px",
-        fontFamily: "Inter, system-ui, sans-serif",
+        padding: "32px",
       }}
     >
-      <div
-        style={{
-          backgroundColor: "#ffffff",
-          borderRadius: "12px",
-          padding: "32px",
-          width: "100%",
-          maxWidth: "900px",
-          boxShadow: "0 10px 25px rgba(0,0,0,0.1)",
-        }}
-      >
-        <h1 style={{ fontSize: "28px", fontWeight: 700 }}>
-          ClariScan AI
-        </h1>
-
-        <p style={{ color: "#555", marginTop: "8px" }}>
-          Upload a contract PDF to identify potential legal risks.
-        </p>
-
-        {/* Upload section */}
+      <div className="glow-border">
         <div
+          className="glass-card"
           style={{
-            marginTop: "24px",
-            display: "flex",
-            gap: "12px",
-            alignItems: "center",
+            padding: "36px",
+            width: "100%",
+            maxWidth: "900px",
           }}
         >
-          <input
-            type="file"
-            accept=".pdf"
-            onChange={(e) => setFile(e.target.files?.[0] || null)}
-          />
+          {/* Header */}
+          <h1 style={{ fontSize: "30px" }}>ClariScan AI</h1>
 
-          <button
-            onClick={handleAnalyze}
-            disabled={loading}
+          <p style={{ marginTop: "10px", color: "#4b5563" }}>
+            ClariScan AI helps you understand legal contracts before you sign
+            them. Upload a PDF contract to break it into clauses, identify
+            potential risks, and receive clear explanations in plain English.
+          </p>
+
+          <p className="disclaimer">
+            This tool provides informational insights only and does not replace
+            professional legal advice.
+          </p>
+
+          {/* Upload */}
+          <div
             style={{
-              padding: "8px 16px",
-              backgroundColor: "#2563eb",
-              color: "white",
-              border: "none",
-              borderRadius: "6px",
-              cursor: "pointer",
-              opacity: loading ? 0.6 : 1,
+              marginTop: "28px",
+              display: "flex",
+              gap: "14px",
+              alignItems: "center",
             }}
           >
-            {loading ? "Analyzing..." : "Analyze"}
-          </button>
-        </div>
+            <input
+              type="file"
+              accept=".pdf"
+              onChange={(e) => setFile(e.target.files?.[0] || null)}
+            />
 
-        {/* Error */}
-        {error && (
-          <p style={{ color: "red", marginTop: "12px" }}>
-            {error}
-          </p>
-        )}
-
-        {/* Results */}
-        {results.length > 0 && (
-          <div style={{ marginTop: "40px" }}>
-            <h2 style={{ fontSize: "20px", marginBottom: "16px" }}>
-              Analysis Results
-            </h2>
-
-            {results.map((item, index) => (
-              <div
-                key={index}
-                style={{
-                  backgroundColor: riskColor(item.analysis.risk_level),
-                  padding: "16px",
-                  borderRadius: "8px",
-                  marginBottom: "16px",
-                }}
-              >
-                <strong>
-                  {item.analysis.clause_type} —{" "}
-                  {item.analysis.risk_level} Risk
-                </strong>
-
-                <p style={{ marginTop: "8px" }}>
-                  {item.clause_text}
-                </p>
-
-                <p style={{ marginTop: "8px" }}>
-                  <strong>Explanation:</strong>{" "}
-                  {item.analysis.explanation}
-                </p>
-
-                {item.analysis.suggestion && (
-                  <p style={{ marginTop: "6px" }}>
-                    <strong>Suggestion:</strong>{" "}
-                    {item.analysis.suggestion}
-                  </p>
-                )}
-              </div>
-            ))}
-
-            <p style={{ fontSize: "12px", color: "#666" }}>
-              ⚠️ This tool is for informational purposes only and does not
-              constitute legal advice.
-            </p>
+            <button
+              onClick={handleAnalyze}
+              disabled={loading}
+              className="analyze-btn"
+              style={{
+                padding: "10px 18px",
+                backgroundColor: "#2563eb",
+                color: "white",
+                border: "none",
+                borderRadius: "8px",
+                cursor: "pointer",
+                fontWeight: 600,
+                opacity: loading ? 0.7 : 1,
+              }}
+            >
+              {loading ? "Analyzing..." : "Analyze"}
+            </button>
           </div>
-        )}
+
+          {/* Results */}
+          {results.length > 0 && (
+            <div style={{ marginTop: "44px" }}>
+              <h2 style={{ fontSize: "22px", marginBottom: "20px" }}>
+                Analysis Results
+              </h2>
+
+              {results.map((item, index) => (
+                <div
+                  key={index}
+                  className="result-card"
+                  style={{
+                    backgroundColor: riskColor(item.analysis.risk_level),
+                    padding: "18px",
+                    borderRadius: "12px",
+                    marginBottom: "18px",
+                  }}
+                >
+                  <strong>
+                    {item.analysis.clause_type} —{" "}
+                    {item.analysis.risk_level} Risk
+                  </strong>
+
+                  <p style={{ marginTop: "10px" }}>
+                    {item.clause_text}
+                  </p>
+
+                  <p style={{ marginTop: "10px" }}>
+                    <strong>Explanation:</strong>{" "}
+                    {item.analysis.explanation}
+                  </p>
+
+                  {item.analysis.suggestion && (
+                    <p style={{ marginTop: "8px" }}>
+                      <strong>Suggestion:</strong>{" "}
+                      {item.analysis.suggestion}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
