@@ -8,24 +8,31 @@ from .pdf_utils import extract_text_from_pdf
 from .clause_utils import split_into_clauses
 from .analyzer import analyze_clause
 
-# Create DB tables
-models.Base.metadata.create_all(bind=engine)
+# -------------------------
+# App initialization
+# -------------------------
 
-# Create FastAPI app
 app = FastAPI(title="ClariScan AI")
 
-# ✅ CORS FIX (THIS IS THE KEY PART)
+# -------------------------
+# CORS configuration
+# -------------------------
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5173",   # Vite dev server
+        "http://localhost:5173",                 # local frontend
+        "https://nightyelf2403.github.io",        # GitHub Pages
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# DB dependency
+# -------------------------
+# Database dependency
+# -------------------------
+
 def get_db():
     db = SessionLocal()
     try:
@@ -33,12 +40,26 @@ def get_db():
     finally:
         db.close()
 
+# -------------------------
+# Startup event (SAFE for cloud)
+# -------------------------
+
+@app.on_event("startup")
+def on_startup():
+    models.Base.metadata.create_all(bind=engine)
+
+# -------------------------
 # Health check
+# -------------------------
+
 @app.get("/")
 def health_check():
     return {"status": "ok"}
 
-# Analyze contract
+# -------------------------
+# Analyze contract endpoint
+# -------------------------
+
 @app.post("/analyze")
 def analyze_contract(
     file: UploadFile = File(...),
@@ -56,8 +77,8 @@ def analyze_contract(
         filename=file.filename
     )
 
-    # Analyze clauses
     results = []
+
     for clause in clauses:
         results.append({
             "clause_text": clause,
