@@ -11,27 +11,38 @@ type AnalysisResult = {
   };
 };
 
+const API_URL = "https://clariscan-ai.onrender.com/analyze";
+
 export default function App() {
   const [file, setFile] = useState<File | null>(null);
   const [results, setResults] = useState<AnalysisResult[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleAnalyze = async () => {
-    if (!file) return;
+    if (!file) {
+      setError("Please select a PDF file.");
+      return;
+    }
+
+    setError(null);
+    setResults([]);
+    setLoading(true);
 
     const formData = new FormData();
     formData.append("file", file);
 
-    setLoading(true);
     try {
-      const res = await axios.post(
-        "http://127.0.0.1:8000/analyze",
-        formData,
-        { headers: { "Content-Type": "multipart/form-data" } }
-      );
-      setResults(res.data.results);
-    } catch {
-      alert("Failed to analyze contract");
+      const response = await axios.post(API_URL, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      setResults(response.data.results || []);
+    } catch (err) {
+      console.error(err);
+      setError("Failed to analyze contract. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -68,17 +79,26 @@ export default function App() {
         <h1 style={{ fontSize: "28px", fontWeight: 700 }}>
           ClariScan AI
         </h1>
+
         <p style={{ color: "#555", marginTop: "8px" }}>
-          Upload a contract to identify potential legal risks.
+          Upload a contract PDF to identify potential legal risks.
         </p>
 
-        {/* Upload */}
-        <div style={{ marginTop: "24px", display: "flex", gap: "12px" }}>
+        {/* Upload section */}
+        <div
+          style={{
+            marginTop: "24px",
+            display: "flex",
+            gap: "12px",
+            alignItems: "center",
+          }}
+        >
           <input
             type="file"
             accept=".pdf"
             onChange={(e) => setFile(e.target.files?.[0] || null)}
           />
+
           <button
             onClick={handleAnalyze}
             disabled={loading}
@@ -95,6 +115,13 @@ export default function App() {
             {loading ? "Analyzing..." : "Analyze"}
           </button>
         </div>
+
+        {/* Error */}
+        {error && (
+          <p style={{ color: "red", marginTop: "12px" }}>
+            {error}
+          </p>
+        )}
 
         {/* Results */}
         {results.length > 0 && (
