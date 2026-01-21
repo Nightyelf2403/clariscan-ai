@@ -5,18 +5,13 @@ from .database import engine, SessionLocal
 from . import models, crud
 from .pdf_utils import extract_text_from_pdf
 from .clause_utils import split_into_clauses
+from .analyzer import analyze_clause
 
-# ---------------------------------
-# Create database tables on startup
-# ---------------------------------
 models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="ClariScan AI")
 
 
-# ---------------------------------
-# Database Dependency
-# ---------------------------------
 def get_db():
     db = SessionLocal()
     try:
@@ -25,38 +20,34 @@ def get_db():
         db.close()
 
 
-# ---------------------------------
-# Health Check
-# ---------------------------------
 @app.get("/")
 def health_check():
     return {"status": "ok"}
 
 
-# ---------------------------------
-# Upload + PDF Parsing + Clause Split
-# ---------------------------------
-@app.post("/upload")
-def upload_contract(
+@app.post("/analyze")
+def analyze_contract(
     file: UploadFile = File(...),
     db: Session = Depends(get_db)
 ):
-    # 1. Extract raw text from PDF
-    extracted_text = extract_text_from_pdf(file.file)
+    text = extract_text_from_pdf(file.file)
+    clauses = split_into_clauses(text)
 
-    # 2. Split text into logical clauses
-    clauses = split_into_clauses(extracted_text)
-
-    # 3. Store document metadata
     document = crud.create_document(
         db=db,
         filename=file.filename
     )
 
-    # 4. Return validation response (temporary)
+    results = []
+
+    for clause in clauses:
+        results.append({
+            "clause_text": clause,
+            "analysis": analyze_clause(clause)
+        })
+
     return {
         "document_id": document.id,
-        "filename": document.filename,
-        "total_clauses": len(clauses),
-        "sample_clauses": clauses[:3]
+        "total_clauses": len(results),
+        "results": results
     }
