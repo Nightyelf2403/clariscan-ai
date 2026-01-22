@@ -2,17 +2,21 @@ from fastapi import FastAPI, UploadFile, File, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
-from .database import engine, SessionLocal
+from .database import SessionLocal
 from . import models, crud
 from .pdf_utils import extract_text_from_pdf
 from .clause_utils import split_into_clauses
-from .analyzer import analyze_clause
+from .analyzer import analyze_clause, analyze_document
 
 # -------------------------
 # App initialization
 # -------------------------
 
-app = FastAPI(title="ClariScan AI")
+app = FastAPI(
+    title="ClariScan AI",
+    description="Deterministic contract risk analysis engine",
+    version="1.0.0"
+)
 
 # -------------------------
 # CORS configuration
@@ -21,8 +25,8 @@ app = FastAPI(title="ClariScan AI")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5173",                 # local frontend
-        "https://nightyelf2403.github.io",        # GitHub Pages
+        "http://localhost:5173",
+        "https://nightyelf2403.github.io",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -41,20 +45,16 @@ def get_db():
         db.close()
 
 # -------------------------
-# Startup event (SAFE for cloud)
-# -------------------------
-
-@app.on_event("startup")
-def on_startup():
-    models.Base.metadata.create_all(bind=engine)
-
-# -------------------------
 # Health check
 # -------------------------
 
 @app.get("/")
 def health_check():
-    return {"status": "ok"}
+    return {
+        "status": "ok",
+        "service": "ClariScan AI",
+        "engine": "deterministic-rule-engine"
+    }
 
 # -------------------------
 # Analyze contract endpoint
@@ -65,28 +65,35 @@ def analyze_contract(
     file: UploadFile = File(...),
     db: Session = Depends(get_db)
 ):
-    # Extract text from PDF
-    text = extract_text_from_pdf(file.file)
+    # 1. Extract full text from PDF
+    document_text = extract_text_from_pdf(file.file)
 
-    # Split into clauses
-    clauses = split_into_clauses(text)
+    # 2. Run document-level intelligence engine
+    document_summary = analyze_document(document_text)
 
-    # Save document metadata
+    # 3. Split into clauses (for UI drill-down)
+    clauses = split_into_clauses(document_text)
+
+    # 4. Persist document metadata (safe even without DB migrations)
     document = crud.create_document(
         db=db,
         filename=file.filename
     )
 
-    results = []
-
-    for clause in clauses:
-        results.append({
+    # 5. Clause-level results
+    clause_results = [
+        {
             "clause_text": clause,
             "analysis": analyze_clause(clause)
-        })
+        }
+        for clause in clauses
+    ]
 
+    # 6. Final response (frontend-first)
     return {
         "document_id": document.id,
-        "total_clauses": len(results),
-        "results": results
+        "filename": file.filename,
+        "total_clauses": len(clause_results),
+        "document_summary": document_summary,
+        "clauses": clause_results
     }
