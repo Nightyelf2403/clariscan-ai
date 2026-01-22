@@ -1,8 +1,8 @@
-from fastapi import FastAPI, UploadFile, File, Depends
+from fastapi import FastAPI, UploadFile, File, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
-from .database import SessionLocal
+from .database import SessionLocal, engine
 from . import models, crud
 from .pdf_utils import extract_text_from_pdf
 from .clause_utils import split_into_clauses
@@ -17,6 +17,10 @@ app = FastAPI(
     description="Deterministic contract risk analysis engine",
     version="1.0.0"
 )
+
+@app.on_event("startup")
+def startup_event():
+    models.Base.metadata.create_all(bind=engine)
 
 # -------------------------
 # CORS configuration
@@ -67,6 +71,10 @@ def analyze_contract(
 ):
     # 1. Extract full text from PDF
     document_text = extract_text_from_pdf(file.file)
+
+    # Defensive validation for empty or very short text
+    if not document_text or len(document_text.strip()) < 20:
+        raise HTTPException(status_code=400, detail="Uploaded PDF contains insufficient text for analysis.")
 
     # 2. Run document-level intelligence engine
     document_summary = analyze_document(document_text)
