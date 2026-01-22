@@ -1,3 +1,20 @@
+# =========================
+# IMPORTANT CONTRACT TERMS
+# =========================
+
+from dataclasses import dataclass
+from typing import List
+
+
+@dataclass
+class ImportantTerm:
+    id: str
+    title: str
+    description: str
+    keywords: List[str]
+    importance: str  # "High" | "Medium"
+    display_hint: str
+    category: str  # e.g., "GENERAL", "HOUSING", "VEHICLE", "FINANCIAL", "EMPLOYMENT"
 
 
 from dataclasses import dataclass
@@ -12,8 +29,16 @@ class Rule:
     risk_level: str  # "High" | "Medium" | "Low"
     keywords: List[str]
     suggestion: str
-    min_hits: int = 1          # minimum keyword matches required to trigger
-    expected_hits: int = 0     # optional override for confidence calculation
+
+    # existing behavior
+    min_hits: int = 1
+    expected_hits: int = 0
+
+    # NEW (all optional, backward-compatible)
+    extract: dict | None = None
+    consequence: str | None = None
+    enforcement: str | None = None   # Immediate | With Notice | After Cure Period
+    applies_to: List[str] | None = None
 
 
 # ============================================================
@@ -1213,5 +1238,475 @@ RULES: List[Rule] = [
             "Seek broader, irrevocable, or perpetual usage rights where possible."
         ),
         min_hits=2
+    ),
+
+    Rule(
+        id="NOISE_COMPLAINT_EVICTION",
+        title="Noise Complaints Can Lead to Eviction",
+        description=(
+            "Repeated noise or disturbance complaints may result in warnings, penalties, or eviction."
+        ),
+        risk_level="Medium",
+        keywords=[
+            "noise complaint",
+            "disturbing other tenants",
+            "quiet enjoyment",
+            "repeated disturbances"
+        ],
+        suggestion=(
+            "Understand acceptable noise levels and escalation consequences."
+        ),
+        min_hits=1
+    ),
+
+    Rule(
+        id="PET_REMOVAL_RIGHTS",
+        title="Mandatory Pet Removal Rights",
+        description=(
+            "Pets may be required to be removed if complaints, damage, or policy violations occur."
+        ),
+        risk_level="Low",
+        keywords=[
+            "pet removal",
+            "remove pet",
+            "pet violation",
+            "unauthorized pet"
+        ],
+        suggestion=(
+            "Confirm pet rules, fees, and conditions that could require pet removal."
+        ),
+    ),
+
+    Rule(
+        id="ACCIDENT_REPORTING_TIME_LIMIT",
+        title="Accident Must Be Reported Within a Fixed Time",
+        description=(
+            "Failure to report an accident within a required time window may void coverage or benefits."
+        ),
+        risk_level="High",
+        keywords=[
+            "report accident within",
+            "notify insurer within",
+            "failure to report accident",
+            "timely accident notice"
+        ],
+        suggestion=(
+            "Note exact reporting deadlines (e.g., 24 or 48 hours)."
+        ),
+    ),
+
+    Rule(
+        id="PROPERTY_DAMAGE_CHARGES",
+        title="Charges for Property or Vehicle Damage",
+        description=(
+            "You may be charged for damage beyond normal wear and tear."
+        ),
+        risk_level="Medium",
+        keywords=[
+            "damage charges",
+            "beyond normal wear",
+            "repair costs",
+            "damage liability"
+        ],
+        suggestion=(
+            "Document condition at start and end to avoid unfair charges."
+        ),
+    ),
+
+    Rule(
+        id="CRIMINAL_REPORTING_TRIGGER",
+        title="Potential Reporting to Law Enforcement",
+        description=(
+            "Certain actions may be reported to law enforcement or authorities."
+        ),
+        risk_level="High",
+        keywords=[
+            "report to authorities",
+            "law enforcement",
+            "criminal report",
+            "illegal activity"
+        ],
+        suggestion=(
+            "Understand actions that could trigger police or regulatory reporting."
+        ),
+    ),
+
+    Rule(
+        id="EVICTION_FAST_TRACK",
+        title="Accelerated Eviction Process",
+        description=(
+            "The agreement allows expedited eviction under certain violations."
+        ),
+        risk_level="High",
+        keywords=[
+            "immediate eviction",
+            "summary eviction",
+            "expedited eviction",
+            "eviction without cure"
+        ],
+        suggestion=(
+            "Confirm cure rights and timelines before eviction can occur."
+        ),
+    ),
+
+    Rule(
+        id="SERVICE_TERMINATION_WITHOUT_REFUND",
+        title="Termination Without Refund",
+        description=(
+            "Services may be terminated without refund of prepaid amounts."
+        ),
+        risk_level="High",
+        keywords=[
+            "terminate without refund",
+            "no refund upon termination",
+            "forfeit prepaid fees"
+        ],
+        suggestion=(
+            "Ensure refunds or credits apply for early termination."
+        ),
+    ),
+]
+IMPORTANT_TERMS: List[ImportantTerm] = [
+    ImportantTerm(
+        id="TERMINATION_NOTICE_PERIOD",
+        title="Termination Notice Period",
+        description="Specifies how much advance written notice is required for either party to terminate the agreement.",
+        keywords=["days written notice", "notice period", "terminate upon"],
+        importance="High",
+        display_hint="Look for the number of days required for notice before termination.",
+        category="GENERAL"
+    ),
+    ImportantTerm(
+        id="PAYMENT_DUE_PERIOD",
+        title="Payment Due Period",
+        description="Defines when payments are due after receipt of invoice or service.",
+        keywords=["pay within", "payment due", "net"],
+        importance="High",
+        display_hint="Check for phrases indicating days to pay, such as 'net 30'.",
+        category="GENERAL"
+    ),
+    ImportantTerm(
+        id="LATE_FEE_RATE",
+        title="Late Fee or Interest Rate",
+        description="Describes the interest rate or late fee charged for overdue payments.",
+        keywords=["interest at", "late fee", "per month"],
+        importance="Medium",
+        display_hint="Identify any interest or penalty rate for late payments.",
+        category="GENERAL"
+    ),
+    ImportantTerm(
+        id="CONTRACT_TERM_LENGTH",
+        title="Contract Term Length",
+        description="States the initial duration of the contract and any renewal periods.",
+        keywords=["term of", "initial term", "shall remain in effect"],
+        importance="High",
+        display_hint="Locate the section specifying the contract's start and end dates.",
+        category="GENERAL"
+    ),
+    ImportantTerm(
+        id="AUTO_RENEWAL_INFO",
+        title="Auto-Renewal Information",
+        description="Indicates whether the contract automatically renews and under what conditions.",
+        keywords=["automatically renew", "renewal term"],
+        importance="Medium",
+        display_hint="Check if the contract renews automatically and the notice required to cancel renewal.",
+        category="GENERAL"
+    ),
+    ImportantTerm(
+        id="GOVERNING_LAW_INFO",
+        title="Governing Law",
+        description="Specifies which state's or country's laws govern the contract.",
+        keywords=["governing law", "laws of the state"],
+        importance="Medium",
+        display_hint="Look for the section referencing governing law or jurisdiction.",
+        category="GENERAL"
+    ),
+    ImportantTerm(
+        id="DATA_RETENTION_POLICY",
+        title="Data Retention Policy",
+        description="Describes how long data will be retained and under what circumstances it will be deleted.",
+        keywords=["retain data", "data retention"],
+        importance="Medium",
+        display_hint="Find how long data is kept after service ends or upon request.",
+        category="GENERAL"
+    ),
+    ImportantTerm(
+        id="ASSIGNMENT_RIGHTS_INFO",
+        title="Assignment Rights",
+        description="Indicates whether either party may assign the agreement to another entity.",
+        keywords=["assign this agreement", "assignment"],
+        importance="Medium",
+        display_hint="See if assignment is allowed and whether consent is required.",
+        category="GENERAL"
+    ),
+    # HOUSING
+    ImportantTerm(
+        id="HOUSING_NOISE_RULES",
+        title="Noise and Quiet Hours Policy",
+        description="Specifies restrictions on noise levels and quiet hours for tenants.",
+        keywords=["quiet hours", "noise policy", "no loud music", "disturb neighbors"],
+        importance="Medium",
+        display_hint="Look for any rules about noise or quiet hours.",
+        category="HOUSING"
+    ),
+    ImportantTerm(
+        id="HOUSING_PETS_POLICY",
+        title="Pets Policy",
+        description="States whether pets are allowed and any restrictions or fees related to pet ownership.",
+        keywords=["no pets allowed", "pet deposit", "pet policy", "pets permitted"],
+        importance="Medium",
+        display_hint="Check for rules about pets, deposits, or breed/size restrictions.",
+        category="HOUSING"
+    ),
+    ImportantTerm(
+        id="HOUSING_GUEST_LIMITS",
+        title="Guest and Occupancy Limits",
+        description="Limits on the number or duration of guests or additional occupants.",
+        keywords=["guest policy", "overnight guests", "maximum occupants", "guest stay limit"],
+        importance="Medium",
+        display_hint="Look for any limits on guests or extra occupants.",
+        category="HOUSING"
+    ),
+    ImportantTerm(
+        id="HOUSING_EARLY_TERMINATION",
+        title="Early Lease Termination",
+        description="Conditions and penalties for ending the lease before the agreed end date.",
+        keywords=["early termination fee", "break lease", "termination before end of term", "lease buyout"],
+        importance="High",
+        display_hint="Check for fees or notice required to end the lease early.",
+        category="HOUSING"
+    ),
+    ImportantTerm(
+        id="HOUSING_SECURITY_DEPOSIT_DEDUCTIONS",
+        title="Security Deposit Deductions",
+        description="Lists reasons or conditions under which the landlord may withhold part or all of the security deposit.",
+        keywords=["security deposit deductions", "damages beyond normal wear", "cleaning fee", "deposit withheld"],
+        importance="Medium",
+        display_hint="See what causes loss of part or all of your deposit.",
+        category="HOUSING"
+    ),
+    ImportantTerm(
+        id="HOUSING_LANDLORD_ENTRY",
+        title="Landlord Entry Rights",
+        description="Specifies when and how the landlord may enter the rental unit.",
+        keywords=["landlord may enter", "entry notice", "right to access premises", "24 hour notice"],
+        importance="Medium",
+        display_hint="Look for notice requirements and allowed reasons for landlord entry.",
+        category="HOUSING"
+    ),
+    # VEHICLE
+    ImportantTerm(
+        id="VEHICLE_ACCIDENT_LIABILITY",
+        title="Accident Liability",
+        description="Defines responsibility for damages or liability in case of an accident.",
+        keywords=["responsible for damages", "accident liability", "liable for loss", "collision responsibility"],
+        importance="High",
+        display_hint="Check who is responsible for damages in an accident.",
+        category="VEHICLE"
+    ),
+    ImportantTerm(
+        id="VEHICLE_DEDUCTIBLE_RESPONSIBILITY",
+        title="Deductible Responsibility",
+        description="States who pays the insurance deductible in the event of a claim or accident.",
+        keywords=["responsible for deductible", "pay insurance deductible", "deductible amount"],
+        importance="Medium",
+        display_hint="See if you are responsible for paying the deductible after a claim.",
+        category="VEHICLE"
+    ),
+    ImportantTerm(
+        id="VEHICLE_REPOSSESSION_RIGHTS",
+        title="Repossession Rights",
+        description="Describes when the lender or lessor can repossess the vehicle.",
+        keywords=["right to repossess", "repossession upon default", "vehicle may be repossessed"],
+        importance="High",
+        display_hint="Check conditions under which the vehicle can be taken back.",
+        category="VEHICLE"
+    ),
+    ImportantTerm(
+        id="VEHICLE_MILEAGE_LIMITS",
+        title="Mileage Limits",
+        description="Specifies any mileage restrictions and excess mileage penalties.",
+        keywords=["mileage limit", "excess mileage charge", "maximum miles per year", "mileage allowance"],
+        importance="Medium",
+        display_hint="Look for annual mileage caps and fees for exceeding them.",
+        category="VEHICLE"
+    ),
+    ImportantTerm(
+        id="VEHICLE_WEAR_AND_TEAR",
+        title="Wear and Tear Standards",
+        description="Defines what is considered normal wear and tear and what may incur extra charges.",
+        keywords=["normal wear and tear", "excessive wear", "return condition", "wear and tear policy"],
+        importance="Medium",
+        display_hint="See what is considered 'normal' wear versus damage.",
+        category="VEHICLE"
+    ),
+    ImportantTerm(
+        id="VEHICLE_TOWING_AUTHORITY",
+        title="Towing and Impound Authority",
+        description="Outlines who can authorize towing or impoundment of the vehicle and under what conditions.",
+        keywords=["may tow vehicle", "towing at owner's expense", "impound authority", "right to tow"],
+        importance="Medium",
+        display_hint="Check who can authorize towing and when.",
+        category="VEHICLE"
+    ),
+    # FINANCIAL
+    ImportantTerm(
+        id="FINANCIAL_COLLATERAL_SECURITY_INTEREST",
+        title="Collateral and Security Interest",
+        description="Specifies any assets pledged as collateral and the lender's rights to them.",
+        keywords=["security interest", "collateral for loan", "pledge of assets", "secured by"],
+        importance="High",
+        display_hint="Look for what property or assets may be taken if you default.",
+        category="FINANCIAL"
+    ),
+    ImportantTerm(
+        id="FINANCIAL_ACCELERATION_CLAUSE",
+        title="Acceleration Clause",
+        description="Allows the lender to demand full repayment if you default or breach the agreement.",
+        keywords=["acceleration clause", "entire balance due", "immediately due and payable", "upon default all sums"],
+        importance="High",
+        display_hint="Check if the lender can require full payment after a default.",
+        category="FINANCIAL"
+    ),
+    ImportantTerm(
+        id="FINANCIAL_ASSET_SEIZURE",
+        title="Asset Seizure Rights",
+        description="Lender's rights to seize, repossess, or sell assets in case of default.",
+        keywords=["right to seize", "repossession", "foreclosure", "asset sale upon default"],
+        importance="High",
+        display_hint="See what actions the lender can take if you don't pay.",
+        category="FINANCIAL"
+    ),
+    ImportantTerm(
+        id="FINANCIAL_WAGE_GARNISHMENT",
+        title="Wage Garnishment",
+        description="Allows the lender or creditor to collect payment directly from your wages.",
+        keywords=["wage garnishment", "garnish wages", "order of garnishment", "withhold from paycheck"],
+        importance="Medium",
+        display_hint="Check if your wages can be taken to satisfy the debt.",
+        category="FINANCIAL"
+    ),
+    ImportantTerm(
+        id="FINANCIAL_COLLECTION_ACTIONS",
+        title="Collection Actions",
+        description="Describes actions the creditor can take to collect overdue payments.",
+        keywords=["collection agency", "collection costs", "attorney fees for collection", "debt collection actions"],
+        importance="Medium",
+        display_hint="See what steps the creditor can take if you miss payments.",
+        category="FINANCIAL"
+    ),
+    # EMPLOYMENT
+    ImportantTerm(
+        id="EMPLOYMENT_WORKING_HOURS",
+        title="Working Hours and On-Call Expectations",
+        description="Defines standard working hours, shift schedules, and on-call requirements.",
+        keywords=["working hours", "on-call", "shift schedule", "expected availability"],
+        importance="High",
+        display_hint="Check required hours, shifts, and on-call expectations.",
+        category="EMPLOYMENT"
+    ),
+    ImportantTerm(
+        id="EMPLOYMENT_OVERTIME_ELIGIBILITY",
+        title="Overtime Eligibility",
+        description="States whether overtime is paid and under what conditions.",
+        keywords=["overtime pay", "eligible for overtime", "hours over 40", "overtime rate"],
+        importance="Medium",
+        display_hint="See if and when overtime is paid.",
+        category="EMPLOYMENT"
+    ),
+    ImportantTerm(
+        id="EMPLOYMENT_IP_OWNERSHIP",
+        title="Intellectual Property Ownership of Work Product",
+        description="Specifies who owns inventions, code, or other work products created during employment.",
+        keywords=["work for hire", "IP belongs to employer", "assignment of inventions", "ownership of work product"],
+        importance="High",
+        display_hint="Check if you must assign all inventions or work product to the employer.",
+        category="EMPLOYMENT"
+    ),
+    ImportantTerm(
+        id="EMPLOYMENT_EXPENSE_REIMBURSEMENT",
+        title="Expense Reimbursement Policy",
+        description="Outlines which work-related expenses will be reimbursed and the process for submitting them.",
+        keywords=["expense reimbursement", "reimbursable expenses", "submit receipts", "approval required for expenses"],
+        importance="Medium",
+        display_hint="See what expenses are covered and how to get reimbursed.",
+        category="EMPLOYMENT"
+    ),
+    # GENERAL OPERATIONAL
+    ImportantTerm(
+        id="GENERAL_NONPAYMENT_PENALTIES",
+        title="Penalties for Non-Payment",
+        description="Specifies late fees, penalties, or interest that apply if payments are missed.",
+        keywords=["late payment penalty", "penalty for non-payment", "interest on overdue", "late charges"],
+        importance="High",
+        display_hint="Look for the consequences of not paying on time.",
+        category="GENERAL"
+    ),
+    ImportantTerm(
+        id="GENERAL_DEFAULT_CONSEQUENCES",
+        title="Consequences of Default",
+        description="Lists what happens if either party defaults, such as termination or legal action.",
+        keywords=["event of default", "remedies for default", "default consequences", "termination upon default"],
+        importance="High",
+        display_hint="Check what happens if you default under the contract.",
+        category="GENERAL"
+    ),
+    ImportantTerm(
+        id="GENERAL_INSURANCE_RESPONSIBILITY",
+        title="Insurance Responsibility",
+        description="Specifies which party must maintain insurance and the required coverage types.",
+        keywords=["must maintain insurance", "insurance coverage required", "provide certificate of insurance", "insurance obligations"],
+        importance="Medium",
+        display_hint="Look for requirements to maintain any insurance policies.",
+        category="GENERAL"
+    ),
+    ImportantTerm(
+        id="TERMINATION_IMMEDIATE_EFFECT",
+        title="Immediate Termination Effect",
+        description="Specifies whether termination takes effect immediately or after a notice period.",
+        keywords=["terminate immediately", "effective immediately"],
+        importance="High",
+        display_hint="Check whether termination happens instantly or after notice.",
+        category="GENERAL"
+    ),
+
+    ImportantTerm(
+        id="NOTICE_TIME_UNITS",
+        title="Notice Time Units (Days / Weeks / Hours)",
+        description="Defines notice requirements using specific time units such as days, weeks, or hours.",
+        keywords=["hours notice", "days notice", "weeks notice"],
+        importance="High",
+        display_hint="Look for exact time units like 24 hours, 7 days, or 30 days.",
+        category="GENERAL"
+    ),
+
+    ImportantTerm(
+        id="PERCENTAGE_PENALTIES",
+        title="Percentage-Based Penalties",
+        description="Specifies penalties calculated as a percentage (interest, fees, or damages).",
+        keywords=["percent", "%", "percentage"],
+        importance="Medium",
+        display_hint="Identify percentage-based fees or penalties.",
+        category="FINANCIAL"
+    ),
+
+    ImportantTerm(
+        id="MONETARY_PENALTIES",
+        title="Fixed Monetary Penalties",
+        description="Defines fixed dollar amounts charged as penalties or fees.",
+        keywords=["$", "USD", "fee of", "penalty of"],
+        importance="Medium",
+        display_hint="Look for fixed dollar penalties or charges.",
+        category="FINANCIAL"
+    ),
+
+    ImportantTerm(
+        id="CONSEQUENCE_SUMMARY",
+        title="Consequences Summary",
+        description="Summarizes what actions will occur if obligations are not met.",
+        keywords=["failure to", "consequences include", "shall result in"],
+        importance="High",
+        display_hint="Understand what happens if terms are violated.",
+        category="GENERAL"
     ),
 ]

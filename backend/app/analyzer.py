@@ -4,6 +4,53 @@ import re
 from .rules.catalog import RULES, Rule
 
 
+OBLIGATION_CONTEXTS = {
+    "termination": ["terminate", "termination", "end this agreement"],
+    "payment": ["pay", "payment", "invoice", "late fee", "interest"],
+    "reporting": ["report", "notify", "inform", "notice"],
+    "cure": ["cure", "fix", "remedy"],
+    "return": ["return", "surrender", "vacate"],
+    "insurance": ["insurance", "claim", "coverage"],
+}
+
+CONSEQUENCE_KEYWORDS = {
+    "termination": ["terminate", "termination"],
+    "eviction": ["evict", "vacate"],
+    "service_suspension": ["suspend services", "suspension"],
+    "repossession": ["repossess", "take back"],
+    "legal_action": ["lawsuit", "legal action", "sue"],
+    "penalty": ["penalty", "fine", "interest"],
+    "data_loss": ["delete data", "data loss"],
+}
+
+# -------------------------
+# Clause-level Evidence Helpers
+# -------------------------
+
+def _extract_matched_keywords(rule: Rule, text: str) -> list[str]:
+    matched = []
+    norm_text = _normalize(text)
+    for kw in getattr(rule, "keywords", []):
+        if _normalize(kw) in norm_text:
+            matched.append(kw)
+    for ph in getattr(rule, "phrases", []):
+        if _normalize(ph) in norm_text:
+            matched.append(ph)
+    return list(dict.fromkeys(matched))
+
+
+def _extract_matching_sentence(text: str, keywords: list[str]) -> str | None:
+    if not keywords:
+        return None
+    sentences = re.split(r'(?<=[.!?])\s+', text)
+    for sentence in sentences:
+        s_norm = sentence.lower()
+        for kw in keywords:
+            if kw.lower() in s_norm:
+                return sentence.strip()
+    return None
+
+
 # -------------------------
 # Utilities
 # -------------------------
@@ -72,6 +119,142 @@ def _confidence_score(hits: int, total_keywords: int) -> int:
     return min(100, int((hits / total_keywords) * 100))
 
 
+def _classify_obligation(text: str) -> str | None:
+    t = text.lower()
+    for label, keywords in OBLIGATION_CONTEXTS.items():
+        if any(k in t for k in keywords):
+            return label
+    return None
+
+
+def _extract_consequences(text: str) -> list[str]:
+    found = []
+    t = text.lower()
+    for label, keywords in CONSEQUENCE_KEYWORDS.items():
+        if any(k in t for k in keywords):
+            found.append(label)
+    return found
+
+
+# -------------------------
+# Time Extraction Helpers
+# -------------------------
+
+# Patterns for numbers written as digits or words (up to 99)
+NUM_WORDS = {
+    "one":1, "two":2, "three":3, "four":4, "five":5, "six":6, "seven":7, "eight":8, "nine":9,
+    "ten":10, "eleven":11, "twelve":12, "thirteen":13, "fourteen":14, "fifteen":15,
+    "sixteen":16, "seventeen":17, "eighteen":18, "nineteen":19, "twenty":20,
+    "thirty":30, "forty":40, "fifty":50, "sixty":60, "seventy":70, "eighty":80, "ninety":90
+}
+
+def _word_to_num(word: str) -> int | None:
+    word = word.lower()
+    if word.isdigit():
+        return int(word)
+    if word in NUM_WORDS:
+        return NUM_WORDS[word]
+    # Handle compound words like twenty-one
+    if '-' in word:
+        parts = word.split('-')
+        total = 0
+        for part in parts:
+            if part in NUM_WORDS:
+                total += NUM_WORDS[part]
+            else:
+                return None
+        return total if total > 0 else None
+    return None
+
+# Regex to capture time expressions like "3 years", "three (3) years", "90-day cure period", "within 48 hrs"
+TIME_UNITS = {
+    "years": r"years?|yrs?|y",
+    "months": r"months?|mos?|mth",
+    "weeks": r"weeks?|wks?|w",
+    "days": r"days?|d",
+    "hours": r"hours?|hrs?|h",
+}
+
+# Build a combined regex pattern to match numbers and units
+# Capture number (word or digit), optional parenthetical number, then unit
+TIME_PATTERN = re.compile(
+    r"\b(?P<num_word>\w+)?\s*(\(?\s*(?P<num_digit>\d+)\s*\))?\s*(?P<unit>" +
+    "|".join(TIME_UNITS.values()) +
+    r")\b",
+    re.IGNORECASE
+)
+
+def _extract_time_values(text: str) -> list[dict]:
+    results = []
+    for match in TIME_PATTERN.finditer(text):
+        num_word = match.group("num_word")
+        num_digit = match.group("num_digit")
+        unit_raw = match.group("unit").lower()
+        # Normalize unit to singular form used in output
+        unit = None
+        for key, pattern in TIME_UNITS.items():
+            if re.fullmatch(pattern, unit_raw, re.IGNORECASE):
+                unit = key
+                break
+        if not unit:
+            continue
+        # Determine value: prefer digit if present, else parse word
+        value = None
+        if num_digit:
+            value = int(num_digit)
+        elif num_word:
+            value = _word_to_num(num_word)
+        if value is None:
+            continue
+        raw_text = match.group(0).strip()
+        results.append({
+            "value": value,
+            "unit": unit,
+            "raw_text": raw_text
+        })
+    return results
+
+
+# -------------------------
+# Percentage & Money Extraction Helpers
+# -------------------------
+
+PERCENT_PATTERN = re.compile(
+    r"\b(?P<value>\d+(\.\d+)?)\s*%\b"
+)
+
+MONEY_PATTERN = re.compile(
+    r"(?P<currency>\$|usd|usd\$)?\s*(?P<amount>\d{1,3}(?:,\d{3})*(?:\.\d+)?)",
+    re.IGNORECASE
+)
+
+def _extract_percentages(text: str) -> list[dict]:
+    results = []
+    for m in PERCENT_PATTERN.finditer(text):
+        results.append({
+            "type": "percentage",
+            "value": float(m.group("value")),
+            "raw_text": m.group(0)
+        })
+    return results
+
+def _extract_money(text: str) -> list[dict]:
+    results = []
+    for m in MONEY_PATTERN.finditer(text):
+        amount = m.group("amount").replace(",", "")
+        try:
+            value = float(amount)
+        except ValueError:
+            continue
+        results.append({
+            "type": "money",
+            "value": value,
+            "currency": "$",
+            "raw_text": m.group(0).strip()
+        })
+    return results
+
+
 # -------------------------
 # Clause Analysis
 # -------------------------
@@ -94,18 +277,33 @@ def analyze_clause(clause_text: str) -> Dict:
             max(1, len(getattr(rule, "keywords", [])))
         )
 
+        matched_keywords = _extract_matched_keywords(rule, clause_text)
         candidates.append({
             "rule": rule,
             "confidence": confidence,
+            "matched_keywords": matched_keywords,
         })
+
+    time_constraints = _extract_time_values(clause_text)
+    percentages = _extract_percentages(clause_text)
+    money_values = _extract_money(clause_text)
+
+    user_must_know = time_constraints + percentages + money_values
 
     if not candidates:
         return {
             "clause_type": "General",
             "risk_level": "Low",
-            "explanation": "No specific risk indicators detected.",
-            "suggestion": None,
             "confidence": 0,
+            "explanation": "No legal risk detected, but important obligations may apply.",
+            "suggestion": None,
+            "triggered_keywords": [],
+            "matched_sentence": None,
+            "time_constraints": time_constraints,
+            "percentages": percentages,
+            "money": money_values,
+            "obligation_type": _classify_obligation(clause_text),
+            "consequences": _extract_consequences(clause_text),
         }
 
     risk_rank = {"High": 3, "Medium": 2, "Low": 1}
@@ -115,12 +313,20 @@ def analyze_clause(clause_text: str) -> Dict:
     )
 
     rule = candidates[0]["rule"]
+    matched_keywords = _extract_matched_keywords(rule, clause_text)
+    time_constraints = _extract_time_values(clause_text)
     return {
         "clause_type": rule.title,
         "risk_level": rule.risk_level,
         "explanation": rule.description,
         "suggestion": rule.suggestion,
         "confidence": candidates[0]["confidence"],
+        "triggered_keywords": matched_keywords,
+        "matched_sentence": _extract_matching_sentence(clause_text, matched_keywords),
+        "time_constraints": time_constraints if time_constraints else [],
+        "user_must_know": user_must_know,
+        "obligation_type": _classify_obligation(clause_text),
+        "consequences": _extract_consequences(clause_text),
     }
 
 
@@ -131,6 +337,10 @@ def analyze_clause(clause_text: str) -> Dict:
 def analyze_document(document_text: str) -> Dict:
     normalized = _normalize(document_text)
     findings = []
+    time_obligations = []
+
+    # Keywords to infer context around time obligations
+    CONTEXT_KEYWORDS = {"termination", "cure", "notice", "report", "payment"}
 
     for rule in RULES:
         kw_hits = _count_keyword_hits(rule, normalized)
@@ -156,6 +366,38 @@ def analyze_document(document_text: str) -> Dict:
             "confidence": confidence,
         })
 
+    # Extract time obligations from document text
+    extracted_times = _extract_time_values(document_text)
+    doc_percents = _extract_percentages(document_text)
+    doc_money = _extract_money(document_text)
+    # For each time found, try to find context word near it (within 10 words)
+    doc_tokens = _tokenize(document_text)
+    for time_entry in extracted_times:
+        # Find position(s) of raw_text in tokens to get context
+        raw_text = time_entry["raw_text"].lower()
+        raw_words = _normalize(raw_text).split()
+        positions = []
+        for i in range(len(doc_tokens) - len(raw_words) + 1):
+            if doc_tokens[i:i+len(raw_words)] == raw_words:
+                positions.append(i)
+        context_found = None
+        for pos in positions:
+            # Look +/- 10 tokens for context keywords
+            start = max(0, pos - 10)
+            end = min(len(doc_tokens), pos + len(raw_words) + 10)
+            window = doc_tokens[start:end]
+            for kw in CONTEXT_KEYWORDS:
+                if kw in window:
+                    context_found = kw
+                    break
+            if context_found:
+                break
+        time_obligations.append({
+            "value": time_entry["value"],
+            "unit": time_entry["unit"],
+            "context": context_found if context_found else "",
+        })
+
     weights = {"High": 3, "Medium": 2, "Low": 1}
     if findings:
         total_weight = sum(weights[f["risk_level"]] * f["confidence"] for f in findings)
@@ -178,4 +420,14 @@ def analyze_document(document_text: str) -> Dict:
         "medium_risk": medium,
         "low_risk": low,
         "all_findings": findings,
+        "time_obligations": time_obligations,
+        "user_must_know": {
+            "deadlines": extracted_times,
+            "percentages": doc_percents,
+            "money": doc_money,
+            "consequences": list(
+                {c for clause in document_text.splitlines()
+                 for c in _extract_consequences(clause)}
+            ),
+        },
     }
