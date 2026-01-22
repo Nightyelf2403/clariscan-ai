@@ -220,38 +220,109 @@ def _extract_time_values(text: str) -> list[dict]:
 # -------------------------
 
 PERCENT_PATTERN = re.compile(
-    r"\b(?P<value>\d+(\.\d+)?)\s*%\b"
+    r"(?P<value>\d+(?:\.\d+)?)\s*%"
 )
 
-MONEY_PATTERN = re.compile(
-    r"(?P<currency>\$|usd|usd\$)?\s*(?P<amount>\d{1,3}(?:,\d{3})*(?:\.\d+)?)",
-    re.IGNORECASE
-)
+NUMBER_PATTERN = re.compile(r"\b\d{1,3}(?:,\d{3})*(?:\.\d+)?\b")
+
+MONEY_CONTEXT_WORDS = {
+    "fee", "fees", "penalty", "fine",
+    "liability", "damages", "amount", "cost", "charge"
+}
+
+TIME_UNITS_SIMPLE = ["day", "days", "month", "months", "year", "years", "hrs", "hours"]
 
 def _extract_percentages(text: str) -> list[dict]:
     results = []
+
     for m in PERCENT_PATTERN.finditer(text):
+        value = float(m.group("value"))
+        raw = m.group(0)
+
+        # Window-based context detection
+        window_start = max(0, m.start() - 40)
+        window_end = min(len(text), m.end() + 40)
+        window = text[window_start:window_end].lower()
+
+        context = None
+        if "interest" in window:
+            context = "interest"
+        elif "penalty" in window or "fine" in window:
+            context = "penalty"
+        elif "late" in window:
+            context = "late_payment"
+
         results.append({
             "type": "percentage",
-            "value": float(m.group("value")),
-            "raw_text": m.group(0)
+            "value": value,
+            "unit": "percent",
+            "raw_text": raw,
+            "context": context,
         })
+
     return results
 
 def _extract_money(text: str) -> list[dict]:
     results = []
-    for m in MONEY_PATTERN.finditer(text):
-        amount = m.group("amount").replace(",", "")
+    for match in NUMBER_PATTERN.finditer(text):
+        raw = match.group(0)
+        # Strengthen: skip if number is part of a percentage match
+        if PERCENT_PATTERN.search(text[max(0, match.start()-1):match.end()+1]):
+            continue
+        # Skip if number is immediately followed by '%'
+        if match.end() < len(text) and text[match.end()] == '%':
+            continue
+        # Skip if nearby text (±5 chars) contains time units like day, days, month, months, year, years, hrs, hours
+        start_context = max(0, match.start() - 5)
+        end_context = min(len(text), match.end() + 5)
+        context_snippet = text[start_context:end_context].lower()
+        if any(unit in context_snippet for unit in TIME_UNITS_SIMPLE):
+            continue
         try:
-            value = float(amount)
+            value = float(raw.replace(",", ""))
         except ValueError:
             continue
-        results.append({
-            "type": "money",
-            "value": value,
-            "currency": "$",
-            "raw_text": m.group(0).strip()
-        })
+
+        # Tighten rules:
+        # Only treat as money if: (a) currency symbol/word exists in same sentence, OR (b) money context word AND currency symbol/word exist
+        # Remove 'interest' from context words (already done above)
+        # Explicitly skip numbers that are part of a percentage match (already above)
+        # Find the sentence containing the number
+        sentences = re.split(r'(?<=[.!?])\s+', text)
+        sentence_found = None
+        match_start = match.start()
+        match_end = match.end()
+        char_count = 0
+        for sent in sentences:
+            sent_len = len(sent)
+            if char_count <= match_start < char_count + sent_len:
+                sentence_found = sent
+                break
+            char_count += sent_len + 1  # +1 for the split char
+        window = sentence_found.lower() if sentence_found else text[max(0, match.start()-50):match.end()+50].lower()
+        has_currency = any(sym in window for sym in ("$", "usd", "dollar"))
+        has_money_context = any(word in window for word in MONEY_CONTEXT_WORDS)
+        # Rule (a): currency symbol/word in same sentence
+        if has_currency:
+            results.append({
+                "type": "money",
+                "value": value,
+                "currency": "$",
+                "raw_text": raw,
+            })
+            continue
+        # Rule (b): money context word AND currency symbol/word exist
+        if has_money_context and has_currency:
+            results.append({
+                "type": "money",
+                "value": value,
+                "currency": "$",
+                "raw_text": raw,
+            })
+            continue
+        # Otherwise, do not treat as money
+        continue
+
     return results
 
 
@@ -288,9 +359,17 @@ def analyze_clause(clause_text: str) -> Dict:
     percentages = _extract_percentages(clause_text)
     money_values = _extract_money(clause_text)
 
-    user_must_know = time_constraints + percentages + money_values
+    # Ensure percentages are always directly included and not recomputed or dropped
+    user_must_know = {
+        "deadlines": time_constraints,
+        "percentages": percentages,
+        "money": money_values,
+        "consequences": _extract_consequences(clause_text),
+    }
 
     if not candidates:
+        # Ensure percentages always appear in both analysis and user_must_know
+        user_must_know["percentages"] = percentages
         return {
             "clause_type": "General",
             "risk_level": "Low",
@@ -302,8 +381,8 @@ def analyze_clause(clause_text: str) -> Dict:
             "time_constraints": time_constraints,
             "percentages": percentages,
             "money": money_values,
+            "user_must_know": user_must_know,
             "obligation_type": _classify_obligation(clause_text),
-            "consequences": _extract_consequences(clause_text),
         }
 
     risk_rank = {"High": 3, "Medium": 2, "Low": 1}
@@ -315,6 +394,8 @@ def analyze_clause(clause_text: str) -> Dict:
     rule = candidates[0]["rule"]
     matched_keywords = _extract_matched_keywords(rule, clause_text)
     time_constraints = _extract_time_values(clause_text)
+    # Ensure percentages always appear in both analysis and user_must_know
+    user_must_know["percentages"] = percentages
     return {
         "clause_type": rule.title,
         "risk_level": rule.risk_level,
@@ -325,8 +406,9 @@ def analyze_clause(clause_text: str) -> Dict:
         "matched_sentence": _extract_matching_sentence(clause_text, matched_keywords),
         "time_constraints": time_constraints if time_constraints else [],
         "user_must_know": user_must_know,
+        "percentages": percentages,
+        "money": money_values,
         "obligation_type": _classify_obligation(clause_text),
-        "consequences": _extract_consequences(clause_text),
     }
 
 
@@ -366,7 +448,7 @@ def analyze_document(document_text: str) -> Dict:
             "confidence": confidence,
         })
 
-    # Extract time obligations from document text
+    # Extract time obligations and percentages from document text
     extracted_times = _extract_time_values(document_text)
     doc_percents = _extract_percentages(document_text)
     doc_money = _extract_money(document_text)

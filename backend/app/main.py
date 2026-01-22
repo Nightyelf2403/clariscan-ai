@@ -69,12 +69,20 @@ def analyze_contract(
     file: UploadFile = File(...),
     db: Session = Depends(get_db)
 ):
-    # 1. Extract full text from PDF
-    document_text = extract_text_from_pdf(file.file)
+    # 1. Extract full text from file (PDF or text)
+    filename = file.filename.lower()
+
+    if filename.endswith(".pdf"):
+        document_text = extract_text_from_pdf(file.file)
+    else:
+        document_text = file.file.read().decode("utf-8", errors="ignore")
 
     # Defensive validation for empty or very short text
     if not document_text or len(document_text.strip()) < 20:
-        raise HTTPException(status_code=400, detail="Uploaded PDF contains insufficient text for analysis.")
+        raise HTTPException(
+            status_code=400,
+            detail="Uploaded file contains insufficient text for analysis."
+        )
 
     # 2. Run document-level intelligence engine
     document_summary = analyze_document(document_text)
@@ -82,7 +90,7 @@ def analyze_contract(
     # 3. Split into clauses (for UI drill-down)
     clauses = split_into_clauses(document_text)
 
-    # 4. Persist document metadata (safe even without DB migrations)
+    # 4. Persist document metadata
     document = crud.create_document(
         db=db,
         filename=file.filename
@@ -97,7 +105,7 @@ def analyze_contract(
         for clause in clauses
     ]
 
-    # 6. Final response (frontend-first)
+    # 6. Final response
     return {
         "document_id": document.id,
         "filename": file.filename,
