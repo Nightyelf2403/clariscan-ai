@@ -12,6 +12,8 @@ class Rule:
     risk_level: str  # "High" | "Medium" | "Low"
     keywords: List[str]
     suggestion: str
+    min_hits: int = 1          # minimum keyword matches required to trigger
+    expected_hits: int = 0     # optional override for confidence calculation
 
 
 # ============================================================
@@ -57,6 +59,7 @@ RULES: List[Rule] = [
         suggestion=(
             "Ensure both parties are granted a reasonable and equal cure period."
         ),
+        min_hits=2
     ),
 
     Rule(
@@ -116,6 +119,7 @@ RULES: List[Rule] = [
         suggestion=(
             "Clarify IP ownership and ensure sufficient rights for continued use."
         ),
+        min_hits=2
     ),
 
     Rule(
@@ -126,15 +130,16 @@ RULES: List[Rule] = [
         ),
         risk_level="Medium",
         keywords=[
-            "late payment",
-            "interest per month",
-            "interest per annum",
-            "penalty",
-            "finance charge"
-        ],
+     "interest at",
+     "interest per month",
+     "interest per annum",
+     "late payment interest",
+     "finance charge of"
+],
         suggestion=(
             "Negotiate lower interest rates and reasonable grace periods for late payments."
         ),
+        min_hits=2
     ),
 
     Rule(
@@ -153,6 +158,7 @@ RULES: List[Rule] = [
         suggestion=(
             "Add clear renewal reminders and broader termination windows."
         ),
+        min_hits=2
     ),
 
     Rule(
@@ -171,6 +177,7 @@ RULES: List[Rule] = [
         suggestion=(
             "Seek neutral governing law or a mutually acceptable jurisdiction."
         ),
+        min_hits=2
     ),
 
     Rule(
@@ -225,6 +232,7 @@ RULES: List[Rule] = [
         suggestion=(
             "Limit confidentiality survival periods to a reasonable timeframe, such as 2–5 years."
         ),
+        min_hits=2
     ),
 
     Rule(
@@ -346,15 +354,16 @@ RULES: List[Rule] = [
         ),
         risk_level="Medium",
         keywords=[
-            "monitoring",
-            "surveillance",
-            "track activity",
-            "record communications",
-            "system usage logs"
-        ],
+    "monitor user activity",
+    "record communications",
+    "track employee behavior",
+    "keystroke logging",
+    "screen monitoring"
+],
         suggestion=(
             "Ensure monitoring is transparent, limited, and compliant with privacy laws."
         ),
+        min_hits=2
     ),
 
     Rule(
@@ -373,6 +382,7 @@ RULES: List[Rule] = [
         suggestion=(
             "Require advance notice and termination rights for fee increases."
         ),
+        min_hits=2
     ),
 
     Rule(
@@ -409,6 +419,7 @@ RULES: List[Rule] = [
         suggestion=(
             "Ensure reasonable refund rights or clearly defined refund conditions."
         ),
+        min_hits=2
     ),
 
     Rule(
@@ -427,6 +438,7 @@ RULES: List[Rule] = [
         suggestion=(
             "Require simple and accessible cancellation methods."
         ),
+        min_hits=2
     ),
 
     Rule(
@@ -473,11 +485,11 @@ RULES: List[Rule] = [
         ),
         risk_level="High",
         keywords=[
-            "suspend services",
-            "sole discretion",
-            "without notice",
-            "may disable access"
-        ],
+    "suspend services at its discretion",
+    "may disable access without notice",
+    "immediately suspend services",
+    "sole discretion to suspend"
+],
         suggestion=(
             "Require notice, justification, and opportunity to cure before suspension."
         ),
@@ -517,6 +529,7 @@ RULES: List[Rule] = [
         suggestion=(
             "Ensure confidentiality obligations apply equally to both parties."
         ),
+        min_hits=2
     ),
 
     Rule(
@@ -535,6 +548,7 @@ RULES: List[Rule] = [
         suggestion=(
             "Add measurable service levels, uptime guarantees, or remedies for failure."
         ),
+        min_hits=2
     ),
 
     Rule(
@@ -606,6 +620,7 @@ RULES: List[Rule] = [
         suggestion=(
             "Add expense caps, approval requirements, and clear definitions of reimbursable costs."
         ),
+        min_hits=2
     ),
 
     Rule(
@@ -624,6 +639,7 @@ RULES: List[Rule] = [
         suggestion=(
             "Limit survival clauses to essential provisions like confidentiality and payment."
         ),
+        min_hits=2
     ),
 
     Rule(
@@ -660,6 +676,7 @@ RULES: List[Rule] = [
         suggestion=(
             "Explicitly exclude unintended third-party beneficiaries."
         ),
+        min_hits=2
     ),
 
     Rule(
@@ -697,6 +714,7 @@ RULES: List[Rule] = [
         suggestion=(
             "Require mutual agreement or final determination before exercising setoff rights."
         ),
+        min_hits=2
     ),
 
     Rule(
@@ -715,6 +733,7 @@ RULES: List[Rule] = [
         suggestion=(
             "Limit termination rights to material adverse impacts, not ownership changes alone."
         ),
+        min_hits=2
     ),
 
     Rule(
@@ -768,6 +787,7 @@ RULES: List[Rule] = [
         suggestion=(
             "Add source code escrow provisions for mission-critical software."
         ),
+        min_hits=2
     ),
     Rule(
         id="DATA_BREACH_NOTIFICATION_DELAY",
@@ -802,6 +822,7 @@ RULES: List[Rule] = [
         suggestion=(
             "Limit background checks to what is legally required and relevant to the role or service."
         ),
+        min_hits=2
     ),
     Rule(
         id="POST_TERMINATION_FEES",
@@ -819,6 +840,7 @@ RULES: List[Rule] = [
         suggestion=(
             "Ensure post-termination fees are limited to earned or unavoidable costs only."
         ),
+        min_hits=2
     ),
     Rule(
         id="DATA_LOCATION_RESTRICTION",
@@ -836,6 +858,7 @@ RULES: List[Rule] = [
         suggestion=(
             "Restrict data storage to jurisdictions with adequate data protection laws."
         ),
+        min_hits=2
     ),
     Rule(
         id="RIGHT_TO_INJUNCTIVE_RELIEF_ONE_SIDED",
@@ -889,6 +912,7 @@ RULES: List[Rule] = [
         suggestion=(
             "Require notice and consent for subcontracting, especially where data or IP is involved."
         ),
+        min_hits=2
     ),
 
     Rule(
@@ -925,6 +949,7 @@ RULES: List[Rule] = [
         suggestion=(
             "Allow modern notice methods such as email with confirmation."
         ),
+        min_hits=2
     ),
 
     Rule(
@@ -961,6 +986,7 @@ RULES: List[Rule] = [
         suggestion=(
             "Add reasonable transition or termination assistance obligations."
         ),
+        min_hits=2
     ),
 
     Rule(
@@ -997,6 +1023,7 @@ RULES: List[Rule] = [
         suggestion=(
             "Define material breach clearly or include objective thresholds."
         ),
+        min_hits=2
     ),
 
     Rule(
@@ -1033,6 +1060,7 @@ RULES: List[Rule] = [
         suggestion=(
             "Add exit rights, data portability, or interoperability protections."
         ),
+        min_hits=2
     ),
 
     Rule(
@@ -1053,6 +1081,7 @@ RULES: List[Rule] = [
         suggestion=(
             "Clarify responsibility for third-party fees and require transparency on all charges."
         ),
+        min_hits=2
     ),
 
     Rule(
@@ -1109,6 +1138,7 @@ RULES: List[Rule] = [
         suggestion=(
             "Define objective standards or measurable criteria for reasonableness."
         ),
+        min_hits=2
     ),
 
     Rule(
@@ -1129,24 +1159,6 @@ RULES: List[Rule] = [
         ),
     ),
 
-        Rule(
-        id="UNBALANCED_TERMINATION_RIGHTS",
-        title="Unbalanced Termination Rights",
-        description=(
-            "One party can terminate freely, while the other faces strict conditions or long notice periods."
-        ),
-        risk_level="High",
-        keywords=[
-            "may terminate at any time",
-            "client may only terminate",
-            "terminate with thirty",
-            "terminate for material breach only"
-        ],
-        suggestion=(
-            "Ensure termination rights and notice periods are balanced for both parties."
-        ),
-    ),
-
     Rule(
         id="LONG_TERM_LOCK_IN",
         title="Long-Term Contract Lock-In",
@@ -1155,32 +1167,15 @@ RULES: List[Rule] = [
         ),
         risk_level="Medium",
         keywords=[
-            "three (3) years",
-            "initial term",
-            "shall remain in effect for",
-            "fixed term"
-        ],
+    "initial term of",
+    "shall remain in effect for",
+    "fixed term of",
+    "multi-year term"
+],
         suggestion=(
             "Add early termination rights or shorter initial terms."
         ),
-    ),
-
-    Rule(
-        id="AGGRESSIVE_LATE_PAYMENT_INTEREST",
-        title="Excessive Late Payment Interest",
-        description=(
-            "Late payment interest is unusually high and may exceed reasonable commercial standards."
-        ),
-        risk_level="Medium",
-        keywords=[
-            "interest at",
-            "per month",
-            "late payments shall incur",
-            "finance charge"
-        ],
-        suggestion=(
-            "Negotiate lower interest rates or cap total penalties."
-        ),
+        min_hits=2
     ),
 
     Rule(
@@ -1191,11 +1186,11 @@ RULES: List[Rule] = [
         ),
         risk_level="High",
         keywords=[
-            "suspend services",
-            "non-payment",
-            "failure to pay",
-            "may suspend"
-        ],
+    "suspend services for non-payment",
+    "failure to pay invoices",
+    "non-payment of fees",
+    "services may be suspended"
+],
         suggestion=(
             "Require notice and cure period before service suspension."
         ),
@@ -1217,5 +1212,6 @@ RULES: List[Rule] = [
         suggestion=(
             "Seek broader, irrevocable, or perpetual usage rights where possible."
         ),
+        min_hits=2
     ),
 ]
