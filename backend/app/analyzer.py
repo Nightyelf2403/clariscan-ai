@@ -139,6 +139,17 @@ def _classify_obligation(text: str) -> str | None:
             return label
     return None
 
+# Human-readable obligation explanation helper
+def explain_obligation(obligation: str | None) -> str | None:
+    return {
+        "payment": "You must pay invoices within the specified time",
+        "termination": "You must follow termination notice requirements",
+        "cure": "You must fix the breach within the allowed cure period",
+        "reporting": "You must report or notify within the required time",
+        "return": "You must return property or assets as required",
+        "insurance": "You must maintain required insurance coverage",
+    }.get(obligation)
+
 
 
 def _extract_consequences(text: str) -> list[str]:
@@ -149,13 +160,18 @@ def _extract_consequences(text: str) -> list[str]:
             found.append(label)
     return found
 
-# Helper to build consequence message chains
-def build_consequence_chain(consequences: list[str]) -> list[str]:
+# Helper to build structured consequence message chains
+def build_consequence_chain(consequences: list[str], obligation: str | None) -> list[dict]:
     chain = []
     for c in consequences:
         if c in CONSEQUENCE_MESSAGES:
-            chain.append(CONSEQUENCE_MESSAGES[c])
-    return list(dict.fromkeys(chain))
+            chain.append({
+                "if": explain_obligation(obligation) or "An obligation is not met",
+                "then": CONSEQUENCE_MESSAGES[c],
+                "obligation_type": obligation,
+            })
+    # Remove duplicates by 'then'
+    return list({(i["then"]): i for i in chain}.values())
 
 
 # -------------------------
@@ -443,14 +459,14 @@ def analyze_clause(clause_text: str) -> Dict:
 
     # Expose consequence chain at clause level
     raw_consequences = _extract_consequences(clause_text)
+    obligation = _classify_obligation(clause_text)
     user_must_know = {
+        "obligation": obligation,
+        "obligation_explanation": explain_obligation(obligation),
         "deadlines": time_constraints,
         "percentages": percentages,
         "money": money_values,
-        "consequence_chain": [
-            {"if": "obligation not met", "then": CONSEQUENCE_MESSAGES[c]}
-            for c in raw_consequences if c in CONSEQUENCE_MESSAGES
-        ],
+        "consequence_chain": build_consequence_chain(raw_consequences, obligation),
     }
 
     # Add “important but not risky” extraction (D3)
@@ -480,7 +496,7 @@ def analyze_clause(clause_text: str) -> Dict:
             "percentages": percentages,
             "money": money_values,
             "user_must_know": user_must_know,
-            "obligation_type": _classify_obligation(clause_text),
+            "obligation_type": obligation,
             "important_but_not_risky": important_info,
         }
 
@@ -506,7 +522,7 @@ def analyze_clause(clause_text: str) -> Dict:
         "user_must_know": user_must_know,
         "percentages": percentages,
         "money": money_values,
-        "obligation_type": _classify_obligation(clause_text),
+        "obligation_type": obligation,
         "important_but_not_risky": important_info,
     }
 
@@ -613,9 +629,6 @@ def analyze_document(document_text: str) -> Dict:
             "deadlines": extracted_times,
             "percentages": doc_percents,
             "money": doc_money,
-            "consequence_chain": [
-                {"if": "obligation not met", "then": CONSEQUENCE_MESSAGES[c]}
-                for c in raw_doc_consequences if c in CONSEQUENCE_MESSAGES
-            ],
+            "consequence_chain": build_consequence_chain(raw_doc_consequences, None),
         },
     }

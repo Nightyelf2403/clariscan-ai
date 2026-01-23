@@ -5,19 +5,22 @@ type Percentage = {
   value: number;
   raw_text: string;
   context: string;
+  frequency?: string;
+  trigger?: string;
 };
 
 type Deadline = {
   value: number;
   unit: string;
   raw_text: string;
+  applies_to?: string;
+  trigger?: string;
 };
 
 type UserMustKnow = {
   deadlines: Deadline[];
   percentages: Percentage[];
-  consequences: string[];
-  what_happens_if_you_dont_comply?: string[];
+  consequence_chain?: { if: string; then: string; obligation_type?: string }[];
 };
 
 type ClauseAnalysis = {
@@ -26,6 +29,8 @@ type ClauseAnalysis = {
   explanation: string;
   suggestion?: string;
   user_must_know?: UserMustKnow;
+  obligation?: string;
+  obligation_explanation?: string;
 };
 
 type Clause = {
@@ -78,55 +83,10 @@ export default function App() {
     return "#dcfce7";
   };
 
-  const consequenceMap: Record<string, string> = {
-    penalty: "Financial penalty may be charged",
-    termination: "The agreement may be terminated",
-    service_suspension: "Your service may be suspended",
-  };
-
   const mustKnow = data?.document_summary?.user_must_know ?? {
     deadlines: [],
     percentages: [],
-    consequences: [],
-    what_happens_if_you_dont_comply: [],
   };
-
-  // Build consequence chain array
-  const consequenceChainParts: string[] = [];
-
-  // Deadlines part
-  if (mustKnow.deadlines?.length) {
-    mustKnow.deadlines.forEach((d) => {
-      consequenceChainParts.push(`Miss ${d.raw_text}`);
-    });
-  }
-
-  // Percentages part
-  if (mustKnow.percentages?.length) {
-    mustKnow.percentages.forEach((p) => {
-      const contextLower = p.context.toLowerCase();
-      // Use raw_text + context + "will be applied if you do not meet the obligation"
-      consequenceChainParts.push(`${p.raw_text} ${contextLower} will be applied if you do not meet the obligation`);
-    });
-  }
-
-  // Consequences part (map keys to human-readable)
-  if (mustKnow.consequences?.length) {
-    mustKnow.consequences.forEach((c) => {
-      const mapped = consequenceMap[c] ?? c;
-      consequenceChainParts.push(mapped);
-    });
-  }
-
-  // what_happens_if_you_dont_comply part
-  if (mustKnow.what_happens_if_you_dont_comply?.length) {
-    mustKnow.what_happens_if_you_dont_comply.forEach((w) => {
-      consequenceChainParts.push(w);
-    });
-  }
-
-  // Join with arrows, but skip empty parts
-  const consequenceChain = consequenceChainParts.filter(Boolean).join(" → ");
 
   return (
     <div
@@ -175,7 +135,7 @@ export default function App() {
             <h2 style={{ fontSize: 22 }}>What You Must Know</h2>
 
             {/* Consequence Chain */}
-            {consequenceChain && (
+            {mustKnow.consequence_chain?.length > 0 && (
               <div
                 style={{
                   backgroundColor: "#f9fafb",
@@ -186,9 +146,15 @@ export default function App() {
                 }}
               >
                 <strong style={{ display: "block", marginBottom: 8 }}>
-                  What Happens If You Don’t Comply (Consequence Chain)
+                  Consequences If Obligations Are Not Met
                 </strong>
-                <p style={{ margin: 0 }}>{consequenceChain}</p>
+                <ul style={{ margin: 0, paddingLeft: 20 }}>
+                  {mustKnow.consequence_chain.map((c, i) => (
+                    <li key={i} style={{ marginBottom: 6 }}>
+                      <strong>{c.if}</strong> → {c.then}
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
 
@@ -207,9 +173,13 @@ export default function App() {
                 <ul style={{ marginTop: 8 }}>
                   {mustKnow.deadlines.map((d, i) => (
                     <li key={i} style={{ marginBottom: 6 }}>
-                      You must act within {d.raw_text} ({d.unit})
+                      {d.applies_to
+                        ? `You must comply with the ${d.applies_to} within ${d.raw_text}.`
+                        : d.trigger
+                        ? `You must act within ${d.raw_text} when ${d.trigger}.`
+                        : `Important time period: ${d.raw_text} as defined in the contract.`}
                       <div style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>
-                        Missing this deadline may trigger penalties or termination.
+                        Missing this may result in penalties, suspension, or termination.
                       </div>
                     </li>
                   ))}
@@ -232,29 +202,8 @@ export default function App() {
                 <ul style={{ marginTop: 8 }}>
                   {mustKnow.percentages.map((p, i) => (
                     <li key={i} style={{ marginBottom: 6 }}>
-                      {p.raw_text} {p.context.toLowerCase()} will be applied if you fail to meet the related obligation (e.g. late payment)
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {/* Consequences */}
-            {mustKnow.consequences?.length > 0 && (
-              <div
-                style={{
-                  backgroundColor: "#f9fafb",
-                  borderRadius: 12,
-                  padding: 16,
-                  marginBottom: 24,
-                  border: "1px solid #e5e7eb",
-                }}
-              >
-                <strong>Consequences</strong>
-                <ul style={{ marginTop: 8 }}>
-                  {mustKnow.consequences.map((c, i) => (
-                    <li key={i} style={{ marginBottom: 6 }}>
-                      {consequenceMap[c] ?? c}
+                      <strong>{p.raw_text}</strong> {p.context.toLowerCase()}
+                      {p.frequency ? ` (${p.frequency})` : ""} will apply because of {p.trigger || "a missed obligation"}.
                     </li>
                   ))}
                 </ul>
@@ -264,7 +213,7 @@ export default function App() {
         )}
 
         {/* CLAUSES */}
-        {data?.clauses && data.clauses.length > 0 && (
+        {data?.clauses?.length > 0 && (
           <div style={{ marginTop: 40 }}>
             <h2 style={{ fontSize: 22 }}>Clause Analysis</h2>
 
@@ -284,6 +233,12 @@ export default function App() {
 
                 <p style={{ marginTop: 8 }}>{c.clause_text}</p>
 
+                {c.analysis.obligation_explanation && (
+                  <p style={{ marginTop: 8 }}>
+                    <strong>Obligation:</strong> {c.analysis.obligation_explanation}
+                  </p>
+                )}
+
                 <p style={{ marginTop: 8 }}>
                   <strong>Explanation:</strong> {c.analysis.explanation}
                 </p>
@@ -292,6 +247,19 @@ export default function App() {
                   <p style={{ marginTop: 6 }}>
                     <strong>Suggestion:</strong> {c.analysis.suggestion}
                   </p>
+                )}
+
+                {c.analysis.user_must_know?.consequence_chain?.length > 0 && (
+                  <div style={{ marginTop: 10 }}>
+                    <strong>If you don’t comply:</strong>
+                    <ul style={{ marginTop: 6 }}>
+                      {c.analysis.user_must_know.consequence_chain.map((cc, idx) => (
+                        <li key={idx}>
+                          {cc.then}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 )}
               </div>
             ))}
