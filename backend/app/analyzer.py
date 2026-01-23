@@ -14,33 +14,6 @@ OBLIGATION_CONTEXTS = {
 }
 
 
-CONSEQUENCE_KEYWORDS = {
-    "termination": ["terminate", "termination"],
-    "eviction": ["evict", "vacate"],
-    "service_suspension": [
-        "suspend services",
-        "service suspension",
-        "services may be suspended",
-        "suspend access"
-    ],
-    "repossession": ["repossess", "take back"],
-    "legal_action": ["lawsuit", "legal action", "sue"],
-    "penalty": ["penalty", "fine"],
-    "interest": ["interest", "finance charge"],
-    "data_loss": ["delete data", "data loss"],
-}
-
-# Human-friendly consequence messages
-CONSEQUENCE_MESSAGES = {
-    "penalty": "You may be charged additional penalties or fees",
-    "interest": "Interest will accrue on the outstanding amount",
-    "service_suspension": "Your service may be suspended",
-    "termination": "The agreement may be terminated",
-    "eviction": "You may be required to vacate the property",
-    "repossession": "The asset may be repossessed",
-    "legal_action": "Legal action may be taken against you",
-    "data_loss": "Your data may be deleted or lost",
-}
 
 # -------------------------
 # Clause-level Evidence Helpers
@@ -158,26 +131,6 @@ def explain_obligation(obligation: str | None) -> str | None:
 
 
 
-def _extract_consequences(text: str) -> list[str]:
-    found = []
-    t = text.lower()
-    for label, keywords in CONSEQUENCE_KEYWORDS.items():
-        if any(k in t for k in keywords):
-            found.append(label)
-    return found
-
-# Helper to build structured consequence message chains
-def build_consequence_chain(consequences: list[str], obligation: str | None) -> list[dict]:
-    chain = []
-    for c in consequences:
-        if c in CONSEQUENCE_MESSAGES:
-            chain.append({
-                "if": explain_obligation(obligation) or "An obligation is not met",
-                "then": CONSEQUENCE_MESSAGES[c],
-                "obligation_type": obligation,
-            })
-    # Remove duplicates by 'then'
-    return list({(i["then"]): i for i in chain}.values())
 
 
 # -------------------------
@@ -469,29 +422,21 @@ def analyze_clause(clause_text: str) -> Dict:
             t["applies_to"] = "cure period"
             t["trigger"] = "Breach of agreement"
 
+    for t in time_constraints:
+        if t.get("applies_to") is None:
+            t["applies_to"] = "contractual reference period"
+            t["trigger"] = "Contractual limitation or reference"
+
     percentages = [normalize_percentage(p) for p in _extract_percentages(clause_text)]
     money_values = _extract_money(clause_text)
 
-    # Expose consequence chain at clause level
-    raw_consequences = _extract_consequences(clause_text)
     obligation = _classify_obligation(clause_text)
-
-    # Infer consequences from percentages when obligation is payment
-    if obligation == "payment":
-        for p in percentages:
-            ctx = p.get("context")
-            if ctx == "interest" and "interest" not in raw_consequences:
-                raw_consequences.append("interest")
-            if ctx == "penalty" and "penalty" not in raw_consequences:
-                raw_consequences.append("penalty")
-
     user_must_know = {
         "obligation": obligation,
         "obligation_explanation": explain_obligation(obligation),
         "deadlines": time_constraints,
         "percentages": percentages,
         "money": money_values,
-        "consequence_chain": build_consequence_chain(raw_consequences, obligation),
     }
 
     # Add “important but not risky” extraction (D3)
@@ -588,6 +533,14 @@ def analyze_document(document_text: str) -> Dict:
             "confidence": confidence,
         })
 
+    # ---- Deduplicate findings by rule ID (keep highest confidence) ----
+    deduped = {}
+    for f in findings:
+        existing = deduped.get(f["id"])
+        if not existing or f["confidence"] > existing["confidence"]:
+            deduped[f["id"]] = f
+    findings = list(deduped.values())
+
     # Extract time obligations and percentages from document text
     extracted_times = _extract_time_values(document_text)
     doc_percents = [normalize_percentage(p) for p in _extract_percentages(document_text)]
@@ -618,18 +571,24 @@ def analyze_document(document_text: str) -> Dict:
         applies_to = None
         trigger = None
 
+        # Termination takes priority over payment if both appear
         if context_found in ("termination", "notice"):
             obligation = "termination"
             applies_to = "termination notice"
             trigger = "Agreement termination"
-        elif context_found == "payment":
-            obligation = "payment"
-            applies_to = "payment deadline"
-            trigger = "Invoice payment"
         elif context_found == "cure":
             obligation = "cure"
             applies_to = "cure period"
             trigger = "Breach of agreement"
+        elif context_found == "payment":
+            obligation = "payment"
+            applies_to = "payment deadline"
+            trigger = "Invoice payment"
+
+        if obligation is None:
+            obligation = "reference"
+            applies_to = "contractual reference period"
+            trigger = "Contractual limitation or reference"
 
         time_obligations.append({
             "value": time_entry["value"],
@@ -662,46 +621,6 @@ def analyze_document(document_text: str) -> Dict:
     for group in (high, medium, low):
         group.sort(key=lambda x: x["confidence"], reverse=True)
 
-    # Build obligation-aware consequence chains at document level
-    obligation_consequence_map: dict[str, list[str]] = {}
-
-    for clause in document_text.splitlines():
-        obligation = _classify_obligation(clause)
-        consequences = _extract_consequences(clause)
-        percentages = _extract_percentages(clause)
-
-        # Infer consequences from percentages at document level (Issue D fix)
-        if obligation == "payment":
-            for p in percentages:
-                ctx = p.get("context")
-                if ctx in ("interest", "penalty") and ctx not in consequences:
-                    consequences.append(ctx)
-
-        if not consequences or not obligation:
-            continue
-
-        obligation_consequence_map.setdefault(obligation, [])
-        obligation_consequence_map[obligation].extend(consequences)
-
-    document_consequence_chains = []
-
-    for obligation, consequences in obligation_consequence_map.items():
-        chain_steps = []
-        seen = set()
-        for c in consequences:
-            if c in CONSEQUENCE_MESSAGES and c not in seen:
-                seen.add(c)
-                chain_steps.append({
-                    "then": CONSEQUENCE_MESSAGES[c]
-                })
-
-        if chain_steps:
-            document_consequence_chains.append({
-                "obligation": obligation,
-                "obligation_explanation": explain_obligation(obligation),
-                "chain": chain_steps
-            })
-
     return {
         "total_findings": len(findings),
         "document_risk_score": document_risk_score,
@@ -714,6 +633,5 @@ def analyze_document(document_text: str) -> Dict:
             "deadlines": time_obligations,
             "percentages": doc_percents,
             "money": doc_money,
-            "consequence_chains": document_consequence_chains,
         },
     }

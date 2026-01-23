@@ -88,24 +88,27 @@ RULES: List[Rule] = [
     ),
 
     Rule(
-        id="LIMITATION_OF_LIABILITY",
-        title="Liability Cap or Liability Exclusion",
-        description=(
-            "The agreement limits or excludes liability, which may prevent recovery "
-            "of meaningful damages."
-        ),
-        risk_level="High",
-        keywords=[
-            "limitation of liability",
-            "shall not be liable",
-            "indirect damages",
-            "consequential damages",
-            "liability shall not exceed"
-        ],
-        suggestion=(
-            "Review liability caps carefully and negotiate carve-outs for gross negligence or willful misconduct."
-        ),
+    id="LIMITATION_OF_LIABILITY",
+    title="Liability Cap or Liability Exclusion",
+    description=(
+        "The agreement limits or excludes liability, which may prevent recovery "
+        "of meaningful damages."
     ),
+    risk_level="High",
+    keywords=[
+        "limitation of liability",
+        "shall not be liable",
+        "indirect damages",
+        "consequential damages",
+        "liability shall not exceed"
+    ],
+    suggestion=(
+        "Review liability caps carefully and negotiate carve-outs for gross negligence or willful misconduct."
+    ),
+    consequence="You may not be able to recover full damages even if the other party is at fault",
+    enforcement="Always Applies",
+    applies_to=["liability"]
+),
 
     Rule(
         id="INDEMNIFICATION_OBLIGATION",
@@ -1213,24 +1216,6 @@ RULES: List[Rule] = [
             "Add early termination rights or shorter initial terms."
         ),
         min_hits=2
-    ),
-
-    Rule(
-        id="SERVICE_SUSPENSION_FOR_NONPAYMENT",
-        title="Service Suspension for Non-Payment",
-        description=(
-            "Services may be suspended immediately for payment issues, disrupting operations."
-        ),
-        risk_level="High",
-        keywords=[
-    "suspend services for non-payment",
-    "failure to pay invoices",
-    "non-payment of fees",
-    "services may be suspended"
-],
-        suggestion=(
-            "Require notice and cure period before service suspension."
-        ),
     ),
 
     Rule(
