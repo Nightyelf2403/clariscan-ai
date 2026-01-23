@@ -78,12 +78,55 @@ export default function App() {
     return "#dcfce7";
   };
 
+  const consequenceMap: Record<string, string> = {
+    penalty: "Financial penalty may be charged",
+    termination: "The agreement may be terminated",
+    service_suspension: "Your service may be suspended",
+  };
+
   const mustKnow = data?.document_summary?.user_must_know ?? {
     deadlines: [],
     percentages: [],
     consequences: [],
     what_happens_if_you_dont_comply: [],
   };
+
+  // Build consequence chain array
+  const consequenceChainParts: string[] = [];
+
+  // Deadlines part
+  if (mustKnow.deadlines?.length) {
+    mustKnow.deadlines.forEach((d) => {
+      consequenceChainParts.push(`Miss ${d.raw_text}`);
+    });
+  }
+
+  // Percentages part
+  if (mustKnow.percentages?.length) {
+    mustKnow.percentages.forEach((p) => {
+      const contextLower = p.context.toLowerCase();
+      // Use raw_text + context + "will be applied if you do not meet the obligation"
+      consequenceChainParts.push(`${p.raw_text} ${contextLower} will be applied if you do not meet the obligation`);
+    });
+  }
+
+  // Consequences part (map keys to human-readable)
+  if (mustKnow.consequences?.length) {
+    mustKnow.consequences.forEach((c) => {
+      const mapped = consequenceMap[c] ?? c;
+      consequenceChainParts.push(mapped);
+    });
+  }
+
+  // what_happens_if_you_dont_comply part
+  if (mustKnow.what_happens_if_you_dont_comply?.length) {
+    mustKnow.what_happens_if_you_dont_comply.forEach((w) => {
+      consequenceChainParts.push(w);
+    });
+  }
+
+  // Join with arrows, but skip empty parts
+  const consequenceChain = consequenceChainParts.filter(Boolean).join(" → ");
 
   return (
     <div
@@ -131,52 +174,92 @@ export default function App() {
           <div style={{ marginTop: 40 }}>
             <h2 style={{ fontSize: 22 }}>What You Must Know</h2>
 
-            {mustKnow.deadlines.length > 0 && (
-              <div>
-                <strong>Deadlines</strong>
-                <ul>
-                  {mustKnow.deadlines.map((d, i) => (
-                    <li key={i}>{d.raw_text}</li>
-                  ))}
-                </ul>
+            {/* Consequence Chain */}
+            {consequenceChain && (
+              <div
+                style={{
+                  backgroundColor: "#f9fafb",
+                  borderRadius: 12,
+                  padding: 16,
+                  marginBottom: 24,
+                  border: "1px solid #e5e7eb",
+                }}
+              >
+                <strong style={{ display: "block", marginBottom: 8 }}>
+                  What Happens If You Don’t Comply (Consequence Chain)
+                </strong>
+                <p style={{ margin: 0 }}>{consequenceChain}</p>
               </div>
             )}
 
-            {mustKnow.percentages.length > 0 && (
-              <div>
-                <strong>Percentages</strong>
-                <ul>
-                  {mustKnow.percentages.map((p, i) => (
-                    <li key={i}>
-                      {p.raw_text} ({p.context})
+            {/* Deadlines */}
+            {mustKnow.deadlines?.length > 0 && (
+              <div
+                style={{
+                  backgroundColor: "#f9fafb",
+                  borderRadius: 12,
+                  padding: 16,
+                  marginBottom: 24,
+                  border: "1px solid #e5e7eb",
+                }}
+              >
+                <strong>Deadlines</strong>
+                <ul style={{ marginTop: 8 }}>
+                  {mustKnow.deadlines.map((d, i) => (
+                    <li key={i} style={{ marginBottom: 6 }}>
+                      You must act within {d.raw_text} ({d.unit})
+                      <div style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>
+                        Missing this deadline may trigger penalties or termination.
+                      </div>
                     </li>
                   ))}
                 </ul>
               </div>
             )}
 
-            {mustKnow.consequences.length > 0 && (
-              <div>
-                <strong>Consequences</strong>
-                <ul>
-                  {mustKnow.consequences.map((c, i) => (
-                    <li key={i}>{c}</li>
+            {/* Percentages */}
+            {mustKnow.percentages?.length > 0 && (
+              <div
+                style={{
+                  backgroundColor: "#f9fafb",
+                  borderRadius: 12,
+                  padding: 16,
+                  marginBottom: 24,
+                  border: "1px solid #e5e7eb",
+                }}
+              >
+                <strong>Percentages</strong>
+                <ul style={{ marginTop: 8 }}>
+                  {mustKnow.percentages.map((p, i) => (
+                    <li key={i} style={{ marginBottom: 6 }}>
+                      {p.raw_text} {p.context.toLowerCase()} will be applied if you fail to meet the related obligation (e.g. late payment)
+                    </li>
                   ))}
                 </ul>
               </div>
             )}
 
-            {mustKnow.what_happens_if_you_dont_comply &&
-              mustKnow.what_happens_if_you_dont_comply.length > 0 && (
-                <div>
-                  <strong>If You Don’t Comply</strong>
-                  <ul>
-                    {mustKnow.what_happens_if_you_dont_comply.map((w, i) => (
-                      <li key={i}>{w}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+            {/* Consequences */}
+            {mustKnow.consequences?.length > 0 && (
+              <div
+                style={{
+                  backgroundColor: "#f9fafb",
+                  borderRadius: 12,
+                  padding: 16,
+                  marginBottom: 24,
+                  border: "1px solid #e5e7eb",
+                }}
+              >
+                <strong>Consequences</strong>
+                <ul style={{ marginTop: 8 }}>
+                  {mustKnow.consequences.map((c, i) => (
+                    <li key={i} style={{ marginBottom: 6 }}>
+                      {consequenceMap[c] ?? c}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         )}
 

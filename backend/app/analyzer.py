@@ -232,7 +232,9 @@ def _extract_time_values(text: str) -> list[dict]:
         results.append({
             "value": value,
             "unit": unit,
-            "raw_text": raw_text
+            "raw_text": raw_text,
+            "applies_to": None,
+            "trigger": None,
         })
     return results
 
@@ -274,12 +276,22 @@ def _extract_percentages(text: str) -> list[dict]:
         elif "late" in window:
             context = "late_payment"
 
+        # Frequency detection
+        frequency = None
+        if "per month" in window:
+            frequency = "per month"
+        elif "per year" in window or "annually" in window:
+            frequency = "per year"
+
         results.append({
             "type": "percentage",
             "value": value,
             "unit": "percent",
             "raw_text": raw,
             "context": context,
+            "frequency": frequency,
+            "applies_to": context,
+            "trigger": "Late payment" if context in ("interest", "penalty", "late_payment") else None,
         })
 
     return results
@@ -413,6 +425,18 @@ def analyze_clause(clause_text: str) -> Dict:
     for t in _extract_time_values(clause_text):
         t["severity"] = classify_deadline(t["value"], t["unit"])
         time_constraints.append(t)
+    # Infer context for time_constraints based on obligation type
+    obligation = _classify_obligation(clause_text)
+    for t in time_constraints:
+        if obligation == "termination":
+            t["applies_to"] = "termination notice"
+            t["trigger"] = "Agreement termination"
+        elif obligation == "payment":
+            t["applies_to"] = "payment deadline"
+            t["trigger"] = "Invoice payment"
+        elif obligation == "cure":
+            t["applies_to"] = "cure period"
+            t["trigger"] = "Breach of agreement"
 
     percentages = [normalize_percentage(p) for p in _extract_percentages(clause_text)]
     money_values = _extract_money(clause_text)
@@ -423,8 +447,10 @@ def analyze_clause(clause_text: str) -> Dict:
         "deadlines": time_constraints,
         "percentages": percentages,
         "money": money_values,
-        "consequences": raw_consequences,
-        "what_happens_if_you_dont_comply": build_consequence_chain(raw_consequences),
+        "consequence_chain": [
+            {"if": "obligation not met", "then": CONSEQUENCE_MESSAGES[c]}
+            for c in raw_consequences if c in CONSEQUENCE_MESSAGES
+        ],
     }
 
     # Add “important but not risky” extraction (D3)
@@ -587,7 +613,9 @@ def analyze_document(document_text: str) -> Dict:
             "deadlines": extracted_times,
             "percentages": doc_percents,
             "money": doc_money,
-            "consequences": raw_doc_consequences,
-            "what_happens_if_you_dont_comply": build_consequence_chain(raw_doc_consequences),
+            "consequence_chain": [
+                {"if": "obligation not met", "then": CONSEQUENCE_MESSAGES[c]}
+                for c in raw_doc_consequences if c in CONSEQUENCE_MESSAGES
+            ],
         },
     }
