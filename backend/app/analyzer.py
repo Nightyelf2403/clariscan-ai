@@ -614,24 +614,38 @@ def analyze_document(document_text: str) -> Dict:
                     break
             if context_found:
                 break
+        obligation = None
+        applies_to = None
+        trigger = None
+
+        if context_found in ("termination", "notice"):
+            obligation = "termination"
+            applies_to = "termination notice"
+            trigger = "Agreement termination"
+        elif context_found == "payment":
+            obligation = "payment"
+            applies_to = "payment deadline"
+            trigger = "Invoice payment"
+        elif context_found == "cure":
+            obligation = "cure"
+            applies_to = "cure period"
+            trigger = "Breach of agreement"
+
         time_obligations.append({
             "value": time_entry["value"],
             "unit": time_entry["unit"],
-            "context": context_found if context_found else "",
-            "applies_to": (
-                "payment deadline" if context_found == "payment"
-                else "termination notice" if context_found == "termination"
-                else "cure period" if context_found == "cure"
-                else None
-            ),
-            "trigger": (
-                "Invoice payment" if context_found == "payment"
-                else "Agreement termination" if context_found == "termination"
-                else "Breach of agreement" if context_found == "cure"
-                else None
-            ),
+            "context": obligation,
+            "applies_to": applies_to,
+            "trigger": trigger,
             "severity": classify_deadline(time_entry["value"], time_entry["unit"]),
         })
+
+    # Deduplicate time_obligations
+    unique = {}
+    for t in time_obligations:
+        key = (t["value"], t["unit"], t.get("applies_to"))
+        unique[key] = t
+    time_obligations = list(unique.values())
 
     weights = {"High": 3, "Medium": 2, "Low": 1}
     if findings:
@@ -697,7 +711,7 @@ def analyze_document(document_text: str) -> Dict:
         "all_findings": findings,
         "time_obligations": time_obligations,
         "user_must_know": {
-            "deadlines": extracted_times,
+            "deadlines": time_obligations,
             "percentages": doc_percents,
             "money": doc_money,
             "consequence_chains": document_consequence_chains,
