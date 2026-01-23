@@ -1,188 +1,157 @@
-# ClariScan AI 🧠📄  
-**AI-assisted Contract Risk Analyzer**
+# ClariScan AI ⚖️
 
-ClariScan AI is a full-stack web application that helps users understand legal contracts by breaking them into readable clauses and highlighting potential legal risks with clear explanations and suggestions.
+ClariScan AI is a lightweight web application that helps users **understand legal contracts faster** by extracting **key risks, obligations, penalties, and important clauses** from uploaded documents.
 
-This project demonstrates how AI-assisted document analysis can be built using a modern, production-style web stack.
+The goal is simple:  
+👉 **Show users what actually matters before they sign a contract.**
 
----
-
-## 🚨 Why ClariScan AI Exists (The Problem)
-
-Legal contracts are everywhere — employment offers, rental agreements, service contracts, NDAs — yet most people sign them without fully understanding the risks.
-
-Common problems include:
-- Legal language is complex and intimidating
-- Important clauses are buried deep in long documents
-- One-sided termination rights go unnoticed
-- Hidden liability limitations and penalties are missed
-- Hiring a lawyer for every document is expensive and unrealistic
-
-As a result, people often discover problems **after** they are legally bound.
+This project focuses on **clarity, explainability, and usability**, not legal jargon.
 
 ---
 
-## 💡 How ClariScan AI Helps
+## 🚀 Live Demo
+Frontend:  
+https://nightyelf2403.github.io/clariscan-ai
 
-ClariScan AI acts as a **first-pass contract risk assistant**.
-
-It:
-- Extracts text from uploaded PDF contracts
-- Splits documents into individual clauses
-- Classifies each clause by type (e.g., Termination, Payment, Liability)
-- Assigns a **risk level** (Low / Medium / High)
-- Explains risks in **plain English**
-- Suggests what users should review or question
-
-⚠️ ClariScan AI does **not replace lawyers** — it helps users become informed **before signing**.
+Backend API:  
+https://clariscan-ai.onrender.com
 
 ---
 
-## 🎯 What This Project Demonstrates
+## 🧠 Why This Project Exists
 
-This project is designed as a **real-world engineering demo**, not a toy example.
+Most people sign contracts without fully understanding:
+- Hidden risks
+- Termination clauses
+- Late payment penalties
+- Liability limits
+- One-sided obligations
 
-It demonstrates:
-- Full-stack development (React + FastAPI)
-- PDF text extraction and processing
-- Clause segmentation and rule-based analysis
-- Clean API design and data flow
-- Frontend ↔ backend integration
-- Deployment on GitHub Pages and Render
-- Responsible AI design with clear disclaimers
-
----
-
-## ✨ Key Features
-
-- Upload PDF contracts
-- Automatic clause extraction
-- Clause classification
-- Risk levels: Low / Medium / High
-- Plain-English explanations
-- Improvement suggestions
-- Clean, user-friendly UI
-- Fully deployed frontend and backend
+ClariScan AI **summarizes only the most important points**, so users can quickly decide:
+- Is this contract risky?
+- What should I be careful about?
+- What happens if I miss a payment or deadline?
 
 ---
 
-## 🌐 Live Demo
+## ❗ Important Note About AI Usage
 
-- **Frontend (GitHub Pages)**  
-  👉 https://nightyelf2403.github.io/clariscan-ai/
+### ❌ No paid AI / LLMs were used
+This project **does NOT use OpenAI, GPT, Claude, Gemini, or any paid AI services**.
 
-- **Backend API (Render)**  
-  👉 https://clariscan-ai.onrender.com/
-
-- **API Documentation (Swagger)**  
-  👉 https://clariscan-ai.onrender.com/docs
+**Reason:**  
+Paid AI APIs are expensive and not feasible for this project’s budget.
 
 ---
 
-## 🛠 Tech Stack
+## ✅ How “AI-like” Analysis Is Achieved Without Paid AI
+
+Instead of using large language models, ClariScan AI uses:
+
+- **Rule-based legal pattern detection**
+- **Keyword + phrase matching**
+- **Structured clause classification**
+- **Heuristic scoring**
+- **Deterministic logic**
+
+This makes the system:
+- Predictable
+- Explainable
+- Cost-free
+- Fast
+
+While it is not generative AI, the output is **very similar to AI summaries**, because contracts follow repeatable legal patterns.
+
+---
+
+## 🛠️ Tech Stack
 
 ### Frontend
-- React
-- TypeScript
-- Vite
-- Axios
-- Tailwind CSS
-- GitHub Pages (deployment)
+- **React (TypeScript)**
+- **Vite**
+- **Framer Motion** (animations & micro-interactions)
+- **CSS / Tailwind-style utilities**
+- **Axios** (API calls)
+- **GitHub Pages** (deployment)
 
 ### Backend
-- Python 3.13
-- FastAPI
-- SQLAlchemy
-- PostgreSQL (configurable)
-- PyPDF (PDF text extraction)
-- Render (deployment)
+- **FastAPI**
+- **Python**
+- **PyPDF** (PDF text extraction)
+- **Rule Engine** (custom legal analysis logic)
+- **Uvicorn**
+- **Render** (backend hosting)
 
 ---
 
-## 🧠 Analysis Logic
+## 📄 What the App Can Do
 
-Currently, ClariScan AI uses a **rule-based analysis engine** to:
-- Identify clause types
-- Assign risk levels
-- Generate explanations and suggestions
+### ✔ Detect if a document is a contract
+- Rejects resumes, general documents, etc.
 
-The architecture is intentionally designed so it can be **upgraded to LLM-based analysis** (OpenAI / Claude / Gemini) in the future without major refactoring.
+### ✔ Extract key clauses
+- Termination
+- Payments
+- Liability
+- Intellectual Property
+- Service suspension
+- Refunds
+- Compliance obligations
+
+### ✔ Risk classification
+- High / Medium / Low risk tagging
+- Clear explanations (plain English)
+
+### ✔ “What You Must Know” Summary
+Only shows:
+- Critical risks
+- Important penalties
+- Major obligations
+- Financial consequences
+
+No unnecessary legal noise.
 
 ---
 
-## 🗂 Project Structure
+## 🧩 Example Output
+- “Late payments incur 2.5% monthly interest.”
+- “Services may be suspended if payment is overdue.”
+- “Liability is capped to fees paid in the last 6 months.”
+- “Termination can occur with short notice.”
 
-```
-clariscan-ai/
-├── backend/
-│   ├── app/
-│   │   ├── main.py
-│   │   ├── analyzer.py
-│   │   ├── clause_utils.py
-│   │   ├── pdf_utils.py
-│   │   ├── database.py
-│   │   └── models.py
-│   └── requirements.txt
-│
-├── frontend/
-│   ├── src/
-│   │   ├── App.tsx
-│   │   └── main.tsx
-│   ├── index.html
-│   └── vite.config.ts
-│
-├── render.yaml
-└── README.md
+---
 
-```
-⸻
+## 🎨 UX & Design Principles
+- Mobile-friendly
+- Minimal UI
+- Clear hierarchy
+- Smooth animations
+- Focus on **understanding**, not legal overwhelm
 
-▶️ Running Locally
+---
 
-Backend
+## ⚠️ Disclaimer
+ClariScan AI provides **AI-assisted summaries only**.  
+It does **NOT** provide legal advice.
 
-cd backend
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload
+Always consult a qualified legal professional before making legal decisions.
 
-Backend runs at:
-👉 http://127.0.0.1:8000
-👉 http://127.0.0.1:8000/docs
+---
 
-Frontend
+## 📌 Future Improvements
+- Optional LLM integration (when budget allows)
+- Clause comparison
+- Exportable summaries
+- Contract risk scoring trends
+- Multi-language support
 
-cd frontend
-npm install
-npm run dev
+---
 
-Frontend runs at:
-👉 http://localhost:5173
+## 👤 Author
+**Nightyelf2403**
 
-⸻
+GitHub: https://github.com/Nightyelf2403
 
-⚠️ Important Disclaimer
+---
 
-ClariScan AI provides informational insights only.
-It does not provide legal advice and should not be used as a substitute for a qualified legal professional.
-Currently focuses on high-confidence risk patterns. Some contextual or implicit risks (such as IP ownership balance or missing clauses) are intentionally conservative and flagged in future iterations.
-
-⸻
-
-🔮 Future Improvements
-	•	Integrate LLMs for deeper legal reasoning
-	•	Clause comparison across jurisdictions
-	•	Highlight unusual or non-standard clauses
-	•	Export annotated contracts
-	•	User accounts and history
-	•	Advanced visualizations and summaries
-
-⸻
-
-👤 Author
-
-Lalith Aditya
-	•	GitHub: https://github.com/nightyelf2403
-	•	LinkedIn: https://www.linkedin.com/in/lalithaditya/
-
+⭐ If you find this project useful, feel free to star the repo!
