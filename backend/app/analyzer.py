@@ -262,6 +262,37 @@ def _extract_percentages(text: str) -> list[dict]:
 
     return results
 
+# -------------------------
+# Percentage Normalization and Deadline Classification Helpers
+# -------------------------
+
+def normalize_percentage(percent: dict) -> dict:
+    raw = percent.get("raw_text", "").lower()
+    value = percent.get("value")
+
+    normalized = percent.copy()
+
+    if "per month" in raw:
+        normalized["annual_equivalent"] = round(value * 12, 2)
+        normalized["normalized_unit"] = "per_year"
+    elif "per week" in raw:
+        normalized["annual_equivalent"] = round(value * 52, 2)
+        normalized["normalized_unit"] = "per_year"
+    elif "per year" in raw or "annually" in raw:
+        normalized["annual_equivalent"] = value
+        normalized["normalized_unit"] = "per_year"
+
+    return normalized
+
+def classify_deadline(value: int, unit: str) -> str:
+    if unit == "hours" or value <= 3:
+        return "urgent"
+    if unit == "days" and value <= 7:
+        return "short"
+    if unit == "days" and value <= 30:
+        return "normal"
+    return "long"
+
 def _extract_money(text: str) -> list[dict]:
     results = []
     for match in NUMBER_PATTERN.finditer(text):
@@ -355,8 +386,13 @@ def analyze_clause(clause_text: str) -> Dict:
             "matched_keywords": matched_keywords,
         })
 
-    time_constraints = _extract_time_values(clause_text)
-    percentages = _extract_percentages(clause_text)
+    # Replace time_constraints and percentages extraction with normalized versions
+    time_constraints = []
+    for t in _extract_time_values(clause_text):
+        t["severity"] = classify_deadline(t["value"], t["unit"])
+        time_constraints.append(t)
+
+    percentages = [normalize_percentage(p) for p in _extract_percentages(clause_text)]
     money_values = _extract_money(clause_text)
 
     # Ensure percentages are always directly included and not recomputed or dropped
@@ -393,8 +429,7 @@ def analyze_clause(clause_text: str) -> Dict:
 
     rule = candidates[0]["rule"]
     matched_keywords = _extract_matched_keywords(rule, clause_text)
-    time_constraints = _extract_time_values(clause_text)
-    # Ensure percentages always appear in both analysis and user_must_know
+    # time_constraints and percentages already set above
     user_must_know["percentages"] = percentages
     return {
         "clause_type": rule.title,
@@ -450,7 +485,7 @@ def analyze_document(document_text: str) -> Dict:
 
     # Extract time obligations and percentages from document text
     extracted_times = _extract_time_values(document_text)
-    doc_percents = _extract_percentages(document_text)
+    doc_percents = [normalize_percentage(p) for p in _extract_percentages(document_text)]
     doc_money = _extract_money(document_text)
     # For each time found, try to find context word near it (within 10 words)
     doc_tokens = _tokenize(document_text)
@@ -478,6 +513,7 @@ def analyze_document(document_text: str) -> Dict:
             "value": time_entry["value"],
             "unit": time_entry["unit"],
             "context": context_found if context_found else "",
+            "severity": classify_deadline(time_entry["value"], time_entry["unit"]),
         })
 
     weights = {"High": 3, "Medium": 2, "Low": 1}
