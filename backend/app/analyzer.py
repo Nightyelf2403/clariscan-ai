@@ -6,7 +6,7 @@ from .rules.catalog import RULES, Rule
 
 OBLIGATION_CONTEXTS = {
     "termination": ["terminate", "termination", "end this agreement"],
-    "payment": ["pay", "payment", "invoice", "late fee", "interest"],
+    "payment": ["pay", "payment", "invoice", "late", "late fee", "interest"],
     "reporting": ["report", "notify", "inform", "notice"],
     "cure": ["cure", "fix", "remedy"],
     "return": ["return", "surrender", "vacate"],
@@ -17,10 +17,16 @@ OBLIGATION_CONTEXTS = {
 CONSEQUENCE_KEYWORDS = {
     "termination": ["terminate", "termination"],
     "eviction": ["evict", "vacate"],
-    "service_suspension": ["suspend services", "suspension"],
+    "service_suspension": [
+        "suspend services",
+        "service suspension",
+        "services may be suspended",
+        "suspend access"
+    ],
     "repossession": ["repossess", "take back"],
     "legal_action": ["lawsuit", "legal action", "sue"],
-    "penalty": ["penalty", "fine", "interest"],
+    "penalty": ["penalty", "fine"],
+    "interest": ["interest", "finance charge"],
     "data_loss": ["delete data", "data loss"],
 }
 
@@ -460,14 +466,24 @@ def analyze_clause(clause_text: str) -> Dict:
     # Expose consequence chain at clause level
     raw_consequences = _extract_consequences(clause_text)
     obligation = _classify_obligation(clause_text)
-    user_must_know = {
-        "obligation": obligation,
-        "obligation_explanation": explain_obligation(obligation),
-        "deadlines": time_constraints,
-        "percentages": percentages,
-        "money": money_values,
-        "consequence_chain": build_consequence_chain(raw_consequences, obligation),
-    }
+
+# Infer consequences from percentages when obligation is payment
+    if obligation == "payment":
+        for p in percentages:
+        ctx = p.get("context")
+        if ctx == "interest" and "interest" not in raw_consequences:
+            raw_consequences.append("interest")
+        if ctx == "penalty" and "penalty" not in raw_consequences:
+            raw_consequences.append("penalty")
+
+user_must_know = {
+    "obligation": obligation,
+    "obligation_explanation": explain_obligation(obligation),
+    "deadlines": time_constraints,
+    "percentages": percentages,
+    "money": money_values,
+    "consequence_chain": build_consequence_chain(raw_consequences, obligation),
+}
 
     # Add “important but not risky” extraction (D3)
     important_info = []
@@ -617,6 +633,14 @@ def analyze_document(document_text: str) -> Dict:
     for clause in document_text.splitlines():
         obligation = _classify_obligation(clause)
         consequences = _extract_consequences(clause)
+        percentages = _extract_percentages(clause)
+
+        # Infer consequences from percentages at document level (Issue D fix)
+        if obligation == "payment":
+            for p in percentages:
+                ctx = p.get("context")
+                if ctx in ("interest", "penalty") and ctx not in consequences:
+                    consequences.append(ctx)
 
         if not consequences or not obligation:
             continue

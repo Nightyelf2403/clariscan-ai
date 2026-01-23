@@ -148,24 +148,27 @@ RULES: List[Rule] = [
     ),
 
     Rule(
-        id="PAYMENT_PENALTIES_INTEREST",
-        title="Aggressive Late Payment Penalties",
-        description=(
-            "The contract imposes high interest rates or severe penalties for late payments."
-        ),
-        risk_level="Medium",
-        keywords=[
-     "interest at",
-     "interest per month",
-     "interest per annum",
-     "late payment interest",
-     "finance charge of"
-],
-        suggestion=(
-            "Negotiate lower interest rates and reasonable grace periods for late payments."
-        ),
-        min_hits=2
+    id="PAYMENT_PENALTIES_INTEREST",
+    title="Aggressive Late Payment Penalties",
+    description=(
+        "The contract imposes high interest rates or severe penalties for late payments."
     ),
+    risk_level="Medium",
+    keywords=[
+        "interest at",
+        "interest per month",
+        "interest per annum",
+        "late payment interest",
+        "finance charge of"
+    ],
+    suggestion=(
+        "Negotiate lower interest rates and reasonable grace periods for late payments."
+    ),
+    min_hits=2,
+    consequence="Additional interest or penalty charges may apply",
+    enforcement="After Cure Period",
+    applies_to=["payment"]
+),
 
     Rule(
         id="AUTO_RENEWAL",
@@ -503,41 +506,47 @@ RULES: List[Rule] = [
     ),
 
     Rule(
-        id="SERVICE_SUSPENSION_DISCRETION",
-        title="Service Suspension at Sole Discretion",
-        description=(
-            "One party may suspend services without clear standards or notice."
-        ),
-        risk_level="High",
-        keywords=[
-    "suspend services at its discretion",
-    "may disable access without notice",
-    "immediately suspend services",
-    "sole discretion to suspend"
-],
-        suggestion=(
-            "Require notice, justification, and opportunity to cure before suspension."
-        ),
+    id="SERVICE_SUSPENSION_FOR_NONPAYMENT",
+    title="Service Suspension for Non-Payment",
+    description=(
+        "Services may be suspended immediately for payment issues, disrupting operations."
     ),
+    risk_level="High",
+    keywords=[
+        "suspend services for non-payment",
+        "failure to pay invoices",
+        "non-payment of fees",
+        "services may be suspended"
+    ],
+    suggestion=(
+        "Require notice and cure period before service suspension."
+    ),
+    consequence="Your service or access may be suspended",
+    enforcement="Immediate",
+    applies_to=["payment"]
+),
 
     Rule(
-        id="TERMINATION_NOTICE_SHORT",
-        title="Unreasonably Short Termination Notice",
-        description=(
-            "The agreement allows termination with an unreasonably short notice period, "
-            "creating operational or financial risk."
-        ),
-        risk_level="High",
-        keywords=[
-            "immediate termination",
-            "terminate immediately",
-            "without prior notice",
-            "upon notice"
-        ],
-        suggestion=(
-            "Negotiate a longer termination notice period to allow transition planning."
-        ),
+    id="TERMINATION_NOTICE_SHORT",
+    title="Unreasonably Short Termination Notice",
+    description=(
+        "The agreement allows termination with an unreasonably short notice period, "
+        "creating operational or financial risk."
     ),
+    risk_level="High",
+    keywords=[
+        "immediate termination",
+        "terminate immediately",
+        "without prior notice",
+        "upon notice"
+    ],
+    suggestion=(
+        "Negotiate a longer termination notice period to allow transition planning."
+    ),
+    consequence="The agreement may be terminated",
+    enforcement="With Notice",
+    applies_to=["termination"]
+),
 
     Rule(
         id="ONE_SIDED_CONFIDENTIALITY",
@@ -668,22 +677,25 @@ RULES: List[Rule] = [
     ),
 
     Rule(
-        id="LIQUIDATED_DAMAGES_PENALTY",
-        title="Punitive Liquidated Damages",
-        description=(
-            "The contract imposes liquidated damages that may function as penalties rather than estimates of loss."
-        ),
-        risk_level="High",
-        keywords=[
-            "liquidated damages",
-            "penalty",
-            "pre-estimated damages",
-            "fixed damages amount"
-        ],
-        suggestion=(
-            "Ensure liquidated damages are reasonable and proportionate to actual harm."
-        ),
+    id="LIQUIDATED_DAMAGES_PENALTY",
+    title="Punitive Liquidated Damages",
+    description=(
+        "The contract imposes liquidated damages that may function as penalties rather than estimates of loss."
     ),
+    risk_level="High",
+    keywords=[
+        "liquidated damages",
+        "penalty",
+        "pre-estimated damages",
+        "fixed damages amount"
+    ],
+    suggestion=(
+        "Ensure liquidated damages are reasonable and proportionate to actual harm."
+    ),
+    consequence="Fixed or percentage-based damages may be charged",
+    enforcement="After Cure Period",
+    applies_to=["payment", "breach"]
+),
 
     Rule(
         id="THIRD_PARTY_BENEFICIARY",
