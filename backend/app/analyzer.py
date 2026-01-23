@@ -13,6 +13,7 @@ OBLIGATION_CONTEXTS = {
     "insurance": ["insurance", "claim", "coverage"],
 }
 
+
 CONSEQUENCE_KEYWORDS = {
     "termination": ["terminate", "termination"],
     "eviction": ["evict", "vacate"],
@@ -21,6 +22,18 @@ CONSEQUENCE_KEYWORDS = {
     "legal_action": ["lawsuit", "legal action", "sue"],
     "penalty": ["penalty", "fine", "interest"],
     "data_loss": ["delete data", "data loss"],
+}
+
+# Human-friendly consequence messages
+CONSEQUENCE_MESSAGES = {
+    "penalty": "You may be charged additional penalties or fees",
+    "interest": "Interest will accrue on the outstanding amount",
+    "service_suspension": "Your service may be suspended",
+    "termination": "The agreement may be terminated",
+    "eviction": "You may be required to vacate the property",
+    "repossession": "The asset may be repossessed",
+    "legal_action": "Legal action may be taken against you",
+    "data_loss": "Your data may be deleted or lost",
 }
 
 # -------------------------
@@ -127,6 +140,7 @@ def _classify_obligation(text: str) -> str | None:
     return None
 
 
+
 def _extract_consequences(text: str) -> list[str]:
     found = []
     t = text.lower()
@@ -134,6 +148,14 @@ def _extract_consequences(text: str) -> list[str]:
         if any(k in t for k in keywords):
             found.append(label)
     return found
+
+# Helper to build consequence message chains
+def build_consequence_chain(consequences: list[str]) -> list[str]:
+    chain = []
+    for c in consequences:
+        if c in CONSEQUENCE_MESSAGES:
+            chain.append(CONSEQUENCE_MESSAGES[c])
+    return list(dict.fromkeys(chain))
 
 
 # -------------------------
@@ -395,13 +417,27 @@ def analyze_clause(clause_text: str) -> Dict:
     percentages = [normalize_percentage(p) for p in _extract_percentages(clause_text)]
     money_values = _extract_money(clause_text)
 
-    # Ensure percentages are always directly included and not recomputed or dropped
+    # Expose consequence chain at clause level
+    raw_consequences = _extract_consequences(clause_text)
     user_must_know = {
         "deadlines": time_constraints,
         "percentages": percentages,
         "money": money_values,
-        "consequences": _extract_consequences(clause_text),
+        "consequences": raw_consequences,
+        "what_happens_if_you_dont_comply": build_consequence_chain(raw_consequences),
     }
+
+    # Add “important but not risky” extraction (D3)
+    important_info = []
+    for t in time_constraints:
+        important_info.append(
+            f"{t['value']} {t['unit']} requirement ({t.get('severity')})"
+        )
+
+    for p in percentages:
+        important_info.append(
+            f"{p['value']}% {p.get('context', 'rate')}"
+        )
 
     if not candidates:
         # Ensure percentages always appear in both analysis and user_must_know
@@ -419,6 +455,7 @@ def analyze_clause(clause_text: str) -> Dict:
             "money": money_values,
             "user_must_know": user_must_know,
             "obligation_type": _classify_obligation(clause_text),
+            "important_but_not_risky": important_info,
         }
 
     risk_rank = {"High": 3, "Medium": 2, "Low": 1}
@@ -444,6 +481,7 @@ def analyze_clause(clause_text: str) -> Dict:
         "percentages": percentages,
         "money": money_values,
         "obligation_type": _classify_obligation(clause_text),
+        "important_but_not_risky": important_info,
     }
 
 
@@ -531,6 +569,12 @@ def analyze_document(document_text: str) -> Dict:
     for group in (high, medium, low):
         group.sort(key=lambda x: x["confidence"], reverse=True)
 
+    # Expose consequence chains at document level
+    raw_doc_consequences = list(
+        {c for clause in document_text.splitlines()
+         for c in _extract_consequences(clause)}
+    )
+
     return {
         "total_findings": len(findings),
         "document_risk_score": document_risk_score,
@@ -543,9 +587,7 @@ def analyze_document(document_text: str) -> Dict:
             "deadlines": extracted_times,
             "percentages": doc_percents,
             "money": doc_money,
-            "consequences": list(
-                {c for clause in document_text.splitlines()
-                 for c in _extract_consequences(clause)}
-            ),
+            "consequences": raw_doc_consequences,
+            "what_happens_if_you_dont_comply": build_consequence_chain(raw_doc_consequences),
         },
     }
