@@ -611,11 +611,37 @@ def analyze_document(document_text: str) -> Dict:
     for group in (high, medium, low):
         group.sort(key=lambda x: x["confidence"], reverse=True)
 
-    # Expose consequence chains at document level
-    raw_doc_consequences = list(
-        {c for clause in document_text.splitlines()
-         for c in _extract_consequences(clause)}
-    )
+    # Build obligation-aware consequence chains at document level
+    obligation_consequence_map: dict[str, list[str]] = {}
+
+    for clause in document_text.splitlines():
+        obligation = _classify_obligation(clause)
+        consequences = _extract_consequences(clause)
+
+        if not consequences or not obligation:
+            continue
+
+        obligation_consequence_map.setdefault(obligation, [])
+        obligation_consequence_map[obligation].extend(consequences)
+
+    document_consequence_chains = []
+
+    for obligation, consequences in obligation_consequence_map.items():
+        chain_steps = []
+        seen = set()
+        for c in consequences:
+            if c in CONSEQUENCE_MESSAGES and c not in seen:
+                seen.add(c)
+                chain_steps.append({
+                    "then": CONSEQUENCE_MESSAGES[c]
+                })
+
+        if chain_steps:
+            document_consequence_chains.append({
+                "obligation": obligation,
+                "obligation_explanation": explain_obligation(obligation),
+                "chain": chain_steps
+            })
 
     return {
         "total_findings": len(findings),
@@ -629,6 +655,6 @@ def analyze_document(document_text: str) -> Dict:
             "deadlines": extracted_times,
             "percentages": doc_percents,
             "money": doc_money,
-            "consequence_chain": build_consequence_chain(raw_doc_consequences, None),
+            "consequence_chains": document_consequence_chains,
         },
     }

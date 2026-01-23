@@ -20,7 +20,11 @@ type Deadline = {
 type UserMustKnow = {
   deadlines: Deadline[];
   percentages: Percentage[];
-  consequence_chain?: { if: string; then: string; obligation_type?: string }[];
+  consequence_chains?: {
+    obligation: string;
+    obligation_explanation?: string;
+    chain: { then: string }[];
+  }[];
 };
 
 type ClauseAnalysis = {
@@ -134,28 +138,25 @@ export default function App() {
           <div style={{ marginTop: 40 }}>
             <h2 style={{ fontSize: 22 }}>What You Must Know</h2>
 
-            {/* Consequence Chain */}
-            {mustKnow.consequence_chain?.length > 0 && (
-              <div
-                style={{
-                  backgroundColor: "#f9fafb",
-                  borderRadius: 12,
-                  padding: 16,
-                  marginBottom: 24,
-                  border: "1px solid #e5e7eb",
-                }}
-              >
-                <strong style={{ display: "block", marginBottom: 8 }}>
-                  Consequences If Obligations Are Not Met
-                </strong>
-                <ul style={{ margin: 0, paddingLeft: 20 }}>
-                  {mustKnow.consequence_chain.map((c, i) => (
-                    <li key={i} style={{ marginBottom: 6 }}>
-                      <strong>{c.if}</strong> → {c.then}
-                    </li>
-                  ))}
-                </ul>
-              </div>
+            {/* Consequence Chains */}
+            {mustKnow.consequence_chains?.length > 0 && (
+              <>
+                {mustKnow.consequence_chains.map((group, i) => (
+                  <div key={i} style={{ marginBottom: 12 }}>
+                    <strong>{group.obligation.toUpperCase()} obligation</strong>
+                    {group.obligation_explanation && (
+                      <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 6 }}>
+                        {group.obligation_explanation}
+                      </div>
+                    )}
+                    <ul>
+                      {group.chain.map((step, j) => (
+                        <li key={j}>{step.then}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </>
             )}
 
             {/* Deadlines */}
