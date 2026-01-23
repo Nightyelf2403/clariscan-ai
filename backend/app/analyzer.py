@@ -1,7 +1,52 @@
 from typing import Dict
 import re
 
+
 from .rules.catalog import RULES, Rule
+#
+# -------------------------
+# Document Type Detection
+# -------------------------
+
+CONTRACT_KEYWORDS = [
+    "agreement", "this agreement", "terms and conditions", "governing law",
+    "liability", "indemnification", "termination", "whereas", "party", "parties"
+]
+
+NON_CONTRACT_KEYWORDS = [
+    "resume", "curriculum vitae", "experience", "education",
+    "skills", "projects", "certifications", "summary"
+]
+
+def detect_document_type(document_text: str) -> dict:
+    text = _normalize(document_text)
+
+    contract_score = sum(2 for kw in CONTRACT_KEYWORDS if kw in text)
+    non_contract_score = sum(2 for kw in NON_CONTRACT_KEYWORDS if kw in text)
+
+    # Bonus if agreement appears early
+    first_chunk = text[: max(200, int(len(text) * 0.2))]
+    if "agreement" in first_chunk:
+        contract_score += 5
+
+    confidence = 0.0
+    doc_type = "contract"
+
+    if non_contract_score > contract_score or contract_score < 6:
+        doc_type = "non_contract"
+        confidence = round(min(1.0, non_contract_score / max(1, non_contract_score + contract_score)), 2)
+    else:
+        confidence = round(min(1.0, contract_score / max(1, non_contract_score + contract_score)), 2)
+
+    return {
+        "document_type": doc_type,
+        "confidence": confidence,
+        "reason": (
+            "This document appears to be a resume or non-contract document."
+            if doc_type == "non_contract"
+            else "This document appears to be a legal contract."
+        ),
+    }
 
 
 OBLIGATION_CONTEXTS = {
@@ -502,6 +547,14 @@ def analyze_clause(clause_text: str) -> Dict:
 # -------------------------
 
 def analyze_document(document_text: str) -> Dict:
+    doc_type_info = detect_document_type(document_text)
+    if doc_type_info["document_type"] == "non_contract":
+        return {
+            "document_type": "non_contract",
+            "confidence": doc_type_info["confidence"],
+            "reason": doc_type_info["reason"],
+            "message": "Please upload a legal contract such as a lease, employment agreement, NDA, or service contract.",
+        }
     normalized = _normalize(document_text)
     findings = []
     time_obligations = []
