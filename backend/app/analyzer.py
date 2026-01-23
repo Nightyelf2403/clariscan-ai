@@ -467,23 +467,23 @@ def analyze_clause(clause_text: str) -> Dict:
     raw_consequences = _extract_consequences(clause_text)
     obligation = _classify_obligation(clause_text)
 
-# Infer consequences from percentages when obligation is payment
+    # Infer consequences from percentages when obligation is payment
     if obligation == "payment":
         for p in percentages:
-        ctx = p.get("context")
-        if ctx == "interest" and "interest" not in raw_consequences:
-            raw_consequences.append("interest")
-        if ctx == "penalty" and "penalty" not in raw_consequences:
-            raw_consequences.append("penalty")
+            ctx = p.get("context")
+            if ctx == "interest" and "interest" not in raw_consequences:
+                raw_consequences.append("interest")
+            if ctx == "penalty" and "penalty" not in raw_consequences:
+                raw_consequences.append("penalty")
 
-user_must_know = {
-    "obligation": obligation,
-    "obligation_explanation": explain_obligation(obligation),
-    "deadlines": time_constraints,
-    "percentages": percentages,
-    "money": money_values,
-    "consequence_chain": build_consequence_chain(raw_consequences, obligation),
-}
+    user_must_know = {
+        "obligation": obligation,
+        "obligation_explanation": explain_obligation(obligation),
+        "deadlines": time_constraints,
+        "percentages": percentages,
+        "money": money_values,
+        "consequence_chain": build_consequence_chain(raw_consequences, obligation),
+    }
 
     # Add “important but not risky” extraction (D3)
     important_info = []
