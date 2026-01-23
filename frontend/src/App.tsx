@@ -1,24 +1,53 @@
 import { useState } from "react";
 import axios from "axios";
 
-type AnalysisResult = {
+type Percentage = {
+  value: number;
+  raw_text: string;
+  context: string;
+};
+
+type Deadline = {
+  value: number;
+  unit: string;
+  raw_text: string;
+};
+
+type UserMustKnow = {
+  deadlines: Deadline[];
+  percentages: Percentage[];
+  consequences: string[];
+  what_happens_if_you_dont_comply?: string[];
+};
+
+type ClauseAnalysis = {
+  clause_type: string;
+  risk_level: "Low" | "Medium" | "High";
+  explanation: string;
+  suggestion?: string;
+  user_must_know?: UserMustKnow;
+};
+
+type Clause = {
   clause_text: string;
-  analysis: {
-    clause_type: string;
-    risk_level: "Low" | "Medium" | "High";
-    explanation: string;
-    suggestion: string | null;
+  analysis: ClauseAnalysis;
+};
+
+type ApiResponse = {
+  document_summary: {
+    user_must_know: UserMustKnow;
   };
+  clauses: Clause[];
 };
 
 export default function App() {
   const [file, setFile] = useState<File | null>(null);
-  const [results, setResults] = useState<AnalysisResult[]>([]);
+  const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(false);
 
   const handleAnalyze = async () => {
     if (!file) {
-      alert("Please upload a PDF contract.");
+      alert("Please upload a contract file.");
       return;
     }
 
@@ -26,7 +55,7 @@ export default function App() {
     formData.append("file", file);
 
     setLoading(true);
-    setResults([]);
+    setData(null);
 
     try {
       const res = await axios.post(
@@ -34,11 +63,10 @@ export default function App() {
         formData,
         { headers: { "Content-Type": "multipart/form-data" } }
       );
-
-      setResults(res.data.results);
-    } catch (error) {
-      console.error(error);
-      alert("Failed to analyze contract");
+      setData(res.data);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to analyze document");
     } finally {
       setLoading(false);
     }
@@ -48,6 +76,13 @@ export default function App() {
     if (risk === "High") return "#fee2e2";
     if (risk === "Medium") return "#fef3c7";
     return "#dcfce7";
+  };
+
+  const mustKnow = data?.document_summary?.user_must_know ?? {
+    deadlines: [],
+    percentages: [],
+    consequences: [],
+    what_happens_if_you_dont_comply: [],
   };
 
   return (
@@ -62,106 +97,123 @@ export default function App() {
         padding: "32px",
       }}
     >
-      <div className="glow-border">
-        <div
-          className="glass-card"
-          style={{
-            padding: "36px",
-            width: "100%",
-            maxWidth: "900px",
-          }}
-        >
-          {/* Header */}
-          <h1 style={{ fontSize: "30px" }}>ClariScan AI</h1>
+      <div className="glass-card" style={{ maxWidth: 1000, width: "100%", padding: 36 }}>
+        <h1 style={{ fontSize: 30 }}>ClariScan AI</h1>
 
-          <p style={{ marginTop: "10px", color: "#4b5563" }}>
-            ClariScan AI helps you understand legal contracts before you sign
-            them. Upload a PDF contract to break it into clauses, identify
-            potential risks, and receive clear explanations in plain English.
-          </p>
+        <p style={{ marginTop: 10, color: "#4b5563" }}>
+          Upload a contract to instantly understand risks, deadlines, penalties,
+          and consequences.
+        </p>
 
-          <p className="disclaimer">
-            This tool provides informational insights only and does not replace
-            professional legal advice.
-          </p>
-
-          {/* Upload */}
-          <div
+        <div style={{ marginTop: 28, display: "flex", gap: 14 }}>
+          <input
+            type="file"
+            onChange={(e) => setFile(e.target.files?.[0] || null)}
+          />
+          <button
+            onClick={handleAnalyze}
+            disabled={loading}
             style={{
-              marginTop: "28px",
-              display: "flex",
-              gap: "14px",
-              alignItems: "center",
+              padding: "10px 18px",
+              backgroundColor: "#2563eb",
+              color: "white",
+              borderRadius: 8,
+              fontWeight: 600,
+              opacity: loading ? 0.7 : 1,
             }}
           >
-            <input
-              type="file"
-              accept=".pdf"
-              onChange={(e) => setFile(e.target.files?.[0] || null)}
-            />
-
-            <button
-              onClick={handleAnalyze}
-              disabled={loading}
-              className="analyze-btn"
-              style={{
-                padding: "10px 18px",
-                backgroundColor: "#2563eb",
-                color: "white",
-                border: "none",
-                borderRadius: "8px",
-                cursor: "pointer",
-                fontWeight: 600,
-                opacity: loading ? 0.7 : 1,
-              }}
-            >
-              {loading ? "Analyzing..." : "Analyze"}
-            </button>
-          </div>
-
-          {/* Results */}
-          {results.length > 0 && (
-            <div style={{ marginTop: "44px" }}>
-              <h2 style={{ fontSize: "22px", marginBottom: "20px" }}>
-                Analysis Results
-              </h2>
-
-              {results.map((item, index) => (
-                <div
-                  key={index}
-                  className="result-card"
-                  style={{
-                    backgroundColor: riskColor(item.analysis.risk_level),
-                    padding: "18px",
-                    borderRadius: "12px",
-                    marginBottom: "18px",
-                  }}
-                >
-                  <strong>
-                    {item.analysis.clause_type} —{" "}
-                    {item.analysis.risk_level} Risk
-                  </strong>
-
-                  <p style={{ marginTop: "10px" }}>
-                    {item.clause_text}
-                  </p>
-
-                  <p style={{ marginTop: "10px" }}>
-                    <strong>Explanation:</strong>{" "}
-                    {item.analysis.explanation}
-                  </p>
-
-                  {item.analysis.suggestion && (
-                    <p style={{ marginTop: "8px" }}>
-                      <strong>Suggestion:</strong>{" "}
-                      {item.analysis.suggestion}
-                    </p>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
+            {loading ? "Analyzing..." : "Analyze"}
+          </button>
         </div>
+
+        {/* USER MUST KNOW */}
+        {data && (
+          <div style={{ marginTop: 40 }}>
+            <h2 style={{ fontSize: 22 }}>What You Must Know</h2>
+
+            {mustKnow.deadlines.length > 0 && (
+              <div>
+                <strong>Deadlines</strong>
+                <ul>
+                  {mustKnow.deadlines.map((d, i) => (
+                    <li key={i}>{d.raw_text}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {mustKnow.percentages.length > 0 && (
+              <div>
+                <strong>Percentages</strong>
+                <ul>
+                  {mustKnow.percentages.map((p, i) => (
+                    <li key={i}>
+                      {p.raw_text} ({p.context})
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {mustKnow.consequences.length > 0 && (
+              <div>
+                <strong>Consequences</strong>
+                <ul>
+                  {mustKnow.consequences.map((c, i) => (
+                    <li key={i}>{c}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {mustKnow.what_happens_if_you_dont_comply &&
+              mustKnow.what_happens_if_you_dont_comply.length > 0 && (
+                <div>
+                  <strong>If You Don’t Comply</strong>
+                  <ul>
+                    {mustKnow.what_happens_if_you_dont_comply.map((w, i) => (
+                      <li key={i}>{w}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+          </div>
+        )}
+
+        {/* CLAUSES */}
+        {data?.clauses && data.clauses.length > 0 && (
+          <div style={{ marginTop: 40 }}>
+            <h2 style={{ fontSize: 22 }}>Clause Analysis</h2>
+
+            {data.clauses.map((c, i) => (
+              <div
+                key={i}
+                style={{
+                  backgroundColor: riskColor(c.analysis.risk_level),
+                  padding: 18,
+                  borderRadius: 12,
+                  marginTop: 18,
+                }}
+              >
+                <strong>
+                  {c.analysis.clause_type} — {c.analysis.risk_level}
+                </strong>
+
+                <p style={{ marginTop: 8 }}>{c.clause_text}</p>
+
+                <p style={{ marginTop: 8 }}>
+                  <strong>Explanation:</strong> {c.analysis.explanation}
+                </p>
+
+                {c.analysis.suggestion && (
+                  <p style={{ marginTop: 6 }}>
+                    <strong>Suggestion:</strong> {c.analysis.suggestion}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
