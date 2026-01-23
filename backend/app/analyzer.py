@@ -305,6 +305,14 @@ def _extract_percentages(text: str) -> list[dict]:
         elif "per year" in window or "annually" in window:
             frequency = "per year"
 
+        # Human-readable explanation
+        if context == "interest":
+            explanation = f"Interest of {value}% applies if payment is late"
+        elif context == "penalty":
+            explanation = f"A penalty of {value}% applies if payment remains unpaid"
+        else:
+            explanation = f"A rate of {value}% applies"
+
         results.append({
             "type": "percentage",
             "value": value,
@@ -314,6 +322,7 @@ def _extract_percentages(text: str) -> list[dict]:
             "frequency": frequency,
             "applies_to": context,
             "trigger": "Late payment" if context in ("interest", "penalty", "late_payment") else None,
+            "explanation": explanation,
         })
 
     return results
@@ -609,6 +618,18 @@ def analyze_document(document_text: str) -> Dict:
             "value": time_entry["value"],
             "unit": time_entry["unit"],
             "context": context_found if context_found else "",
+            "applies_to": (
+                "payment deadline" if context_found == "payment"
+                else "termination notice" if context_found == "termination"
+                else "cure period" if context_found == "cure"
+                else None
+            ),
+            "trigger": (
+                "Invoice payment" if context_found == "payment"
+                else "Agreement termination" if context_found == "termination"
+                else "Breach of agreement" if context_found == "cure"
+                else None
+            ),
             "severity": classify_deadline(time_entry["value"], time_entry["unit"]),
         })
 
